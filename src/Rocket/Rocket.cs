@@ -18,7 +18,10 @@ public class Rocket
     private Vector2 _velocity;
     private float _speed = 400f;
 
-    private Texture2D _texture;
+    private readonly List<Shot> _shots = [];
+
+    private Texture2D _rocketTexture;
+
     internal void Initialize()
     {
         // Set position to center of the screen and velocity to zero
@@ -29,7 +32,8 @@ public class Rocket
 
     public void LoadContent(ContentManager content)
     {
-        _texture = content.Load<Texture2D>("Ships/Ship01");
+        _rocketTexture = content.Load<Texture2D>("Ships/Ship01");
+        Shot.LoadContent(content);
     }
 
     public void Update(GameTime gameTime, KeyboardState keyboardState)
@@ -62,6 +66,28 @@ public class Rocket
             }
         }
 
+        // Add shot by Space key
+        if (keyboardState.IsKeyDown(Keys.Space))
+        {
+            _shots.Add(new Shot(_position, _rotation));
+        }
+
+        var shotsToRemove = new List<Shot>();
+        foreach (var shot in _shots)
+        {
+            shot.Update(gameTime, keyboardState);
+            if (!shot.IsActive)
+            {
+                shotsToRemove.Add(shot);
+            }
+        }
+
+        foreach (var shot in shotsToRemove)
+        {
+            _shots.Remove(shot);
+        }
+
+
         // Apply air resistance
         _velocity *= 0.99f;
 
@@ -78,9 +104,9 @@ public class Rocket
             _velocity.X = 0;
         }
 
-        if (_position.X > 1024 - _texture.Width)
+        if (_position.X > 1024 - _rocketTexture.Width)
         {
-            _position.X = 1024 - _texture.Width;
+            _position.X = 1024 - _rocketTexture.Width;
             _velocity.X = 0;
         }
 
@@ -90,9 +116,9 @@ public class Rocket
             _velocity.Y = 0;
         }
 
-        if (_position.Y > 768 - _texture.Height)
+        if (_position.Y > 768 - _rocketTexture.Height)
         {
-            _position.Y = 768 - _texture.Height;
+            _position.Y = 768 - _rocketTexture.Height;
             _velocity.Y = 0;
         }
     }
@@ -100,7 +126,16 @@ public class Rocket
 
     internal void Draw(SpriteBatch spriteBatch)
     {
+        // Draw shots
+        foreach (var shot in _shots)
+        {
+            if (shot.IsActive)
+            {
+                shot.Draw(spriteBatch);
+            }
+        }
+
         // Draw the rocket with the correct rotation
-        spriteBatch.Draw(_texture, _position, null, Color.White, _rotation, new Vector2(_texture.Width / 2, _texture.Height / 2), 1f, SpriteEffects.None, 0f);
+        spriteBatch.Draw(_rocketTexture, _position, null, Color.White, _rotation, new Vector2(_rocketTexture.Width / 2, _rocketTexture.Height / 2), 1f, SpriteEffects.None, 0f);
     }
 }
