@@ -25,12 +25,19 @@
 /processorParam:TextureFormat=Color
 /build:Dialogs/Background.png
 
-#begin Fonts/Basic.spritefont
+#begin Fonts/BasicFont.spritefont
 /importer:FontDescriptionImporter
 /processor:FontDescriptionProcessor
 /processorParam:PremultiplyAlpha=True
 /processorParam:TextureFormat=Compressed
-/build:Fonts/Basic.spritefont
+/build:Fonts/BasicFont.spritefont
+
+#begin Fonts/DialogFont.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:Fonts/DialogFont.spritefont
 
 #begin Ships/Ship01.png
 /importer:TextureImporter
