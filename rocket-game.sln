@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{16D12315-5AF8-44FB-A182-B561A2CD084E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{2B56AC78-1EAA-4CD0-80D0-827A7BEB9FC5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rocket", "src\Rocket\Rocket.csproj", "{A0BF2BB1-4C08-4D0B-95C5-3753F6975F24}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A0BF2BB1-4C08-4D0B-95C5-3753F6975F24}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A0BF2BB1-4C08-4D0B-95C5-3753F6975F24}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A0BF2BB1-4C08-4D0B-95C5-3753F6975F24}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A0BF2BB1-4C08-4D0B-95C5-3753F6975F24}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A0BF2BB1-4C08-4D0B-95C5-3753F6975F24} = {16D12315-5AF8-44FB-A182-B561A2CD084E}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {644788B4-4F02-4491-93C2-A1CC6D7FC2E2}
+	EndGlobalSection
+EndGlobal
