@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Input;
 using Microsoft.Xna.Framework;
 using System.Collections.Generic;
 using System;
+using MonoGame.Extended.Input;
 
 namespace Rocket;
 
@@ -11,7 +12,7 @@ public class Shot
 {
     private Vector2 _position;
     private float _rotation;
-    private float _speed = 1500f;
+    private float _speed = 1200f;
 
     private bool _isActive = true;
     public bool IsActive => _isActive;
@@ -29,16 +30,16 @@ public class Shot
         _texture = content.Load<Texture2D>("Ships/Shot");
     }
 
-    public void Update(GameTime gameTime, KeyboardState keyboardState)
+    public void Update(GameTime gameTime)
     {
         // Move shot in direction of rotation
         _position += new Vector2((float)Math.Cos(_rotation), (float)Math.Sin(_rotation)) * _speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         // Keep rocket on screen
-        if (_position.X < 0 ||
-            _position.X > 1024 - _texture.Width ||
-            _position.Y < 0 ||
-            _position.Y > 768 - _texture.Height)
+        if (_position.X < 0 - _texture.Width ||
+            _position.X > 1024 + _texture.Width ||
+            _position.Y < 0 - _texture.Height ||
+            _position.Y > 768 + _texture.Height)
         {
             _isActive = false;
         }

@@ -1,6 +1,8 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using MonoGame.Extended.BitmapFonts;
+using MonoGame.Extended.Input;
 using System;
 using System.Collections.Generic;
 
@@ -21,6 +23,7 @@ public class Game1 : Game
     private SpriteBatch _spriteBatch;
     private SpriteFont _basicFont;
     private SpriteFont _dialogFont;
+    private BitmapFont _bmfont;
     private List<Texture2D> _tiles = [];
     private Texture2D _background;
     private Effect _infinite;
@@ -167,6 +170,8 @@ public class Game1 : Game
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
 
+        _bmfont = BitmapFont.FromFile(_graphics.GraphicsDevice, "Content/Fonts/BitmapFont01.fnt");
+
         _basicFont = Content.Load<SpriteFont>("Fonts/BasicFont");
         _dialogFont = Content.Load<SpriteFont>("Fonts/DialogFont");
 
@@ -185,14 +190,13 @@ public class Game1 : Game
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed || Keyboard.GetState().IsKeyDown(Keys.Escape))
             Exit();
 
-        var nextKeyboardState = Keyboard.GetState();
-        if (_keyboardState.IsKeyUp(Keys.Enter) &&
-            nextKeyboardState.IsKeyDown(Keys.LeftAlt) &&
-            nextKeyboardState.IsKeyDown(Keys.Enter))
+        KeyboardExtended.Update();
+        var keyboardState = KeyboardExtended.GetState();
+        if (keyboardState.WasKeyPressed(Keys.F11) ||
+            keyboardState.WasKeyPressed(Keys.Enter) && keyboardState.IsKeyDown(Keys.LeftAlt))
         {
             ToggleFullscreen();
         }
-        _keyboardState = nextKeyboardState;
 
         if (_backBufferHeight != GraphicsDevice.PresentationParameters.BackBufferHeight ||
             _backBufferWidth != GraphicsDevice.PresentationParameters.BackBufferWidth)
@@ -202,7 +206,7 @@ public class Game1 : Game
 
         if (_isActive)
         {
-            _rocket.Update(gameTime, _keyboardState);
+            _rocket.Update(gameTime, keyboardState);
         }
 
         base.Update(gameTime);
@@ -235,9 +239,10 @@ public class Game1 : Game
         if (!_isActive)
         {
             _spriteBatch.Draw(_tiles[0], new Vector2(50, 50), Color.White);
-            _spriteBatch.DrawString(_dialogFont, $"Connecting to server...", new Vector2(300, 350), Color.White);
+            _spriteBatch.DrawString(_bmfont, $"Connecting to server...", new Vector2(350, 350), Color.White);
         }
 
+        _spriteBatch.DrawString(_bmfont, $"Connecting to server...", new Vector2(350, 15), Color.White);
         _spriteBatch.End();
 
         base.Draw(gameTime);

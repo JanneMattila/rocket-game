@@ -52,3 +52,8 @@ https://opengameart.org/content/sci-fi-sounds
 	Follow on Twitter for updates:
 	http://twitter.com/KenneyNL
 
+## Fonts
+
+https://www.angelcode.com/products/bmfont/
+
+https://www.monogameextended.net/docs/features/fonts/bitmapfont/

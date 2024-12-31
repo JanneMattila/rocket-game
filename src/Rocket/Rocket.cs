@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using MonoGame.Extended.Input;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,6 +20,7 @@ public class Rocket
     private float _speed = 400f;
 
     private readonly List<Shot> _shots = [];
+    private int _shotCooldown = 0;
 
     private Texture2D _rocketTexture;
 
@@ -36,7 +38,7 @@ public class Rocket
         Shot.LoadContent(content);
     }
 
-    public void Update(GameTime gameTime, KeyboardState keyboardState)
+    public void Update(GameTime gameTime, KeyboardStateExtended keyboardState)
     {
         // Turn rocket by A and Left arrow keys
         if (keyboardState.IsKeyDown(Keys.A) || keyboardState.IsKeyDown(Keys.Left))
@@ -67,15 +69,19 @@ public class Rocket
         }
 
         // Add shot by Space key
-        if (keyboardState.IsKeyDown(Keys.Space))
+        if (_shotCooldown > 0) _shotCooldown--;
+        if (keyboardState.IsKeyDown(Keys.Space) && _shotCooldown == 0)
         {
-            _shots.Add(new Shot(_position, _rotation));
+            // Calculate new shot position
+            var shotPosition = _position + new Vector2((float)Math.Cos(_rotation), (float)Math.Sin(_rotation)) * _rocketTexture.Width / 2;
+            _shots.Add(new Shot(shotPosition, _rotation));
+            _shotCooldown = 10;
         }
 
         var shotsToRemove = new List<Shot>();
         foreach (var shot in _shots)
         {
-            shot.Update(gameTime, keyboardState);
+            shot.Update(gameTime);
             if (!shot.IsActive)
             {
                 shotsToRemove.Add(shot);
