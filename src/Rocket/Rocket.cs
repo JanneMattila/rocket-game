@@ -98,27 +98,27 @@ public class Rocket
         _position += _velocity * (float)gameTime.ElapsedGameTime.TotalSeconds;
 
         // Keep rocket on screen
-        if (_position.X < 0)
+        if (_position.X < _rocketTexture.Width / 2)
         {
-            _position.X = 0;
+            _position.X = _rocketTexture.Width / 2;
             _velocity.X = 0;
         }
 
-        if (_position.X > 1024 - _rocketTexture.Width)
+        if (_position.X > 1024 - _rocketTexture.Width / 2)
         {
-            _position.X = 1024 - _rocketTexture.Width;
+            _position.X = 1024 - _rocketTexture.Width / 2;
             _velocity.X = 0;
         }
 
-        if (_position.Y < 0)
+        if (_position.Y < _rocketTexture.Height / 2)
         {
-            _position.Y = 0;
+            _position.Y = _rocketTexture.Height / 2;
             _velocity.Y = 0;
         }
 
-        if (_position.Y > 768 - _rocketTexture.Height)
+        if (_position.Y > 768 - _rocketTexture.Height / 2)
         {
-            _position.Y = 768 - _rocketTexture.Height;
+            _position.Y = 768 - _rocketTexture.Height / 2;
             _velocity.Y = 0;
         }
     }

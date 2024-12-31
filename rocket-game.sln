@@ -9,6 +9,12 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{2B56AC78-1
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rocket", "src\Rocket\Rocket.csproj", "{A0BF2BB1-4C08-4D0B-95C5-3753F6975F24}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "doc", "doc", "{B2309015-9159-4C52-BACB-A94F0F6E7A36}"
+	ProjectSection(SolutionItems) = preProject
+		Credits.md = Credits.md
+		README.md = README.md
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

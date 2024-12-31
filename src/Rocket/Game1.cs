@@ -22,6 +22,11 @@ public class Game1 : Game
     private SpriteFont _basicFont;
     private SpriteFont _dialogFont;
     private List<Texture2D> _tiles = [];
+    private Texture2D _background;
+    private Effect _infinite;
+    private Vector2 _xy = new(0f, 0f);
+    private float _scale = 1f;
+    private float _rotation = 0f;
     private KeyboardState _keyboardState = new();
     private Rocket _rocket = new();
 
@@ -33,7 +38,8 @@ public class Game1 : Game
         {
             PreferredBackBufferWidth = (int)_baseScreenSize.X,
             PreferredBackBufferHeight = (int)_baseScreenSize.Y,
-            IsFullScreen = false
+            IsFullScreen = false,
+            GraphicsProfile = GraphicsProfile.HiDef
         };
         Content.RootDirectory = "Content";
     }
@@ -125,6 +131,29 @@ public class Game1 : Game
         Vector3 screenScalingFactor = new Vector3(horScaling, verScaling, 1);
         _globalTransformation = Matrix.CreateScale(screenScalingFactor);
     }
+
+    private Matrix GetView()
+    {
+        int width = GraphicsDevice.Viewport.Width;
+        int height = GraphicsDevice.Viewport.Height;
+        Vector2 origin = new(width / 2f, height / 2f);
+
+        return
+            Matrix.CreateTranslation(-origin.X, -origin.Y, 0f) *
+            Matrix.CreateTranslation(-_xy.X, -_xy.Y, 0f) *
+            Matrix.CreateRotationZ(_rotation) *
+        Matrix.CreateScale(_scale, _scale, 1f) *
+            Matrix.CreateTranslation(origin.X, origin.Y, 0f);
+    }
+    private Matrix GetUVTransform(Texture2D t, Vector2 offset, float scale, Viewport v)
+    {
+        return
+            Matrix.CreateScale(t.Width, t.Height, 1f) *
+            Matrix.CreateScale(scale, scale, 1f) *
+            Matrix.CreateTranslation(offset.X, offset.Y, 0f) *
+            GetView() *
+            Matrix.CreateScale(1f / v.Width, 1f / v.Height, 1f);
+    }
     #endregion
 
     protected override void Initialize()
@@ -140,7 +169,11 @@ public class Game1 : Game
 
         _basicFont = Content.Load<SpriteFont>("Fonts/BasicFont");
         _dialogFont = Content.Load<SpriteFont>("Fonts/DialogFont");
+
         _tiles.Add(Content.Load<Texture2D>("Dialogs/Background"));
+
+        _background = Content.Load<Texture2D>("Backgrounds/Space01");
+        _infinite = Content.Load<Effect>("Backgrounds/Infinite");
 
         _rocket.LoadContent(Content);
 
@@ -178,6 +211,20 @@ public class Game1 : Game
     protected override void Draw(GameTime gameTime)
     {
         GraphicsDevice.Clear(Color.Black);
+
+        int width = GraphicsDevice.Viewport.Width;
+        int height = GraphicsDevice.Viewport.Height;
+
+        Matrix projection = Matrix.CreateOrthographicOffCenter(0, width, height, 0, 0, 1);
+        Matrix uv_transform = GetUVTransform(_background, new Vector2(0, 0), 1f, GraphicsDevice.Viewport);
+
+        _infinite.Parameters["view_projection"].SetValue(Matrix.Identity * projection);
+        _infinite.Parameters["uv_transform"].SetValue(Matrix.Invert(uv_transform));
+
+
+        _spriteBatch.Begin(effect: _infinite, samplerState: SamplerState.LinearWrap);
+        _spriteBatch.Draw(_background, GraphicsDevice.Viewport.Bounds, Color.White);
+        _spriteBatch.End();
 
         _spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, _globalTransformation);
 
