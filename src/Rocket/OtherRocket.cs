@@ -8,14 +8,13 @@ using RocketShared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Sockets;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace Rocket;
 
-public class Rocket
+public class OtherRocket
 {
     private Vector2 _position;
     private float _rotation;
@@ -31,6 +30,8 @@ public class Rocket
     private readonly List<Shot> _shots = [];
     private int _shotCooldown = 0;
 
+    private int _isActive = 0;
+
     private Texture2D _rocketTexture;
 
     internal void Initialize()
@@ -43,44 +44,50 @@ public class Rocket
 
     public void LoadContent(ContentManager content)
     {
-        _rocketTexture = content.Load<Texture2D>("Ships/Ship01");
+        _rocketTexture = content.Load<Texture2D>("Ships/Ship02");
         Shot.LoadContent(content);
     }
 
-    public void Update(GameTime gameTime, KeyboardStateExtended keyboardState)
+    public void Update(GameTime gameTime)
     {
-        // Turn rocket by A and Left arrow keys
-        var isUp = false;
-        var isDown = false;
-        var isLeft = false;
-        var isRight = false;
-        var isFiring = false;
+        if (GameNetwork.Incoming.TryDequeue(out var packet))
+        {
+            //_position = new Vector2(packet.PositionX, packet.PositionY);
+            //_velocity = new Vector2(packet.VelocityX, packet.VelocityY);
+            //_rotation = packet.Rotation;
+            //_speed = packet.Speed;
+            _isUp = packet.IsUp == 1;
+            _isDown = packet.IsDown == 1;
+            _isLeft = packet.IsLeft == 1;
+            _isRight = packet.IsRight == 1;
+            _isFiring = packet.IsFiring == 1;
+            _isActive = 50;
+        }
 
-        if (keyboardState.IsKeyDown(Keys.A) || keyboardState.IsKeyDown(Keys.Left))
+        // Turn rocket by A and Left arrow keys
+        if (_isLeft)
         {
             _rotation -= 2f * (float)gameTime.ElapsedGameTime.TotalSeconds;
-            isLeft = true;
         }
 
         // Turn rocket by D and Right arrow keys
-        if (keyboardState.IsKeyDown(Keys.D) || keyboardState.IsKeyDown(Keys.Right))
+        if (_isRight)
         {
             _rotation += 2f * (float)gameTime.ElapsedGameTime.TotalSeconds;
-            isRight = true;
         }
 
         // Accelerate by W and Up arrow keys
-        if (keyboardState.IsKeyDown(Keys.W) || keyboardState.IsKeyDown(Keys.Up))
+        if (_isUp)
         {
             _velocity += new Vector2((float)Math.Cos(_rotation), (float)Math.Sin(_rotation)) * _speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
-            isUp = true;
+            _isUp = true;
         }
 
         // Decelerate by S and Down arrow keys
-        if (keyboardState.IsKeyDown(Keys.S) || keyboardState.IsKeyDown(Keys.Down))
+        if (_isDown)
         {
             _velocity -= new Vector2((float)Math.Cos(_rotation), (float)Math.Sin(_rotation)) * _speed * 0.5f * (float)gameTime.ElapsedGameTime.TotalSeconds;
-            isDown = true;
+            _isDown = true;
             if (_velocity.Length() < 0)
             {
                 _velocity = Vector2.Zero;
@@ -89,13 +96,12 @@ public class Rocket
 
         // Add shot by Space key
         if (_shotCooldown > 0) _shotCooldown--;
-        if (keyboardState.IsKeyDown(Keys.Space) && _shotCooldown == 0)
+        if (_isFiring && _shotCooldown == 0)
         {
             // Calculate new shot position
             var shotPosition = _position + new Vector2((float)Math.Cos(_rotation), (float)Math.Sin(_rotation)) * _rocketTexture.Width / 2;
             _shots.Add(new Shot(shotPosition, _rotation));
             _shotCooldown = 10;
-            isFiring = true;
         }
 
         var shotsToRemove = new List<Shot>();
@@ -146,26 +152,14 @@ public class Rocket
             _position.Y = 768 - _rocketTexture.Height / 2;
             _velocity.Y = 0;
         }
-
-        GameNetwork.Outgoing.Enqueue(new NetworkPacket()
-        {
-            PositionX = _position.X,
-            PositionY = _position.Y,
-            VelocityX = _velocity.X,
-            VelocityY = _velocity.Y,
-            Rotation = _rotation,
-            Speed = _speed,
-            IsUp = isUp ? (byte)1 : (byte)0,
-            IsDown = isDown ? (byte)1 : (byte)0,
-            IsLeft = isLeft ? (byte)1 : (byte)0,
-            IsRight = isRight ? (byte)1 : (byte)0,
-            IsFiring = isFiring ? (byte)1 : (byte)0
-        });
+        _isActive--;
+        if (_isActive < 0) _isActive = 0;
     }
-
 
     internal void Draw(SpriteBatch spriteBatch)
     {
+        if (_isActive == 0) return;
+
         // Draw shots
         foreach (var shot in _shots)
         {

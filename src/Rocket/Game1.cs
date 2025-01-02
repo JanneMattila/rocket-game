@@ -33,6 +33,7 @@ public class Game1 : Game
     private float _rotation = 0f;
     private KeyboardState _keyboardState = new();
     private Rocket _rocket = new();
+    private OtherRocket _otherRocket = new();
 
     private bool _isActive = false;
 
@@ -163,6 +164,7 @@ public class Game1 : Game
     protected override void Initialize()
     {
         _rocket.Initialize();
+        _otherRocket.Initialize();
 
         base.Initialize();
     }
@@ -189,6 +191,7 @@ public class Game1 : Game
         _infinite = Content.Load<Effect>("Backgrounds/Infinite");
 
         _rocket.LoadContent(Content);
+        _otherRocket.LoadContent(Content);
 
         ScalePresentationArea();
     }
@@ -215,6 +218,7 @@ public class Game1 : Game
         if (_isActive && GameNetwork.Status == GameNetworkStatus.Connected)
         {
             _rocket.Update(gameTime, keyboardState);
+            _otherRocket.Update(gameTime);
         }
         else if (GameNetwork.Status == GameNetworkStatus.Connected)
         {
@@ -245,6 +249,7 @@ public class Game1 : Game
         _spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, _globalTransformation);
 
         _rocket.Draw(_spriteBatch);
+        _otherRocket.Draw(_spriteBatch);
 
         _spriteBatch.DrawString(_basicFont, $"Running: {Math.Round(1000.0f / gameTime.ElapsedGameTime.TotalMilliseconds)}", Vector2.One, Color.White);
 

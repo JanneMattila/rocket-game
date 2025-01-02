@@ -18,7 +18,6 @@ Console.WriteLine($"UDP Port: {udpPort}");
 var players = new Dictionary<IPEndPoint, RocketPlayer>();
 var listener = new UdpClient(udpPort);
 var remoteEndpoint = new IPEndPoint(IPAddress.Any, udpPort);
-const int expectedMessageSize = 12;
 
 System.IO.Hashing.Crc32 crc32 = new();
 var protocolMagicNumber = new ReadOnlySpan<byte>(BitConverter.GetBytes((short)0xFE));

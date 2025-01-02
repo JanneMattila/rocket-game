@@ -14,8 +14,8 @@ public class NetworkPacket
 {
     public static byte[] ProtocolMagicNumber = [0xFE];
     public static int ExpectedMessageSize =
-        sizeof(int) * 6  + /* pos + vel + rotation + speed */
-        sizeof(byte) + /* isFiring */
+        sizeof(int) * 6  + /* pos(2) + vel(2) + rotation + speed */
+        sizeof(byte) + /* keyboard */
         sizeof(int); /* crc32 */
     public float PositionX { get; set; }
     public float PositionY { get; set; }
@@ -23,6 +23,10 @@ public class NetworkPacket
     public float VelocityY { get; set; }
     public float Rotation { get; set; }
     public float Speed { get; set; }
+    public byte IsUp { get; set; }
+    public byte IsDown { get; set; }
+    public byte IsLeft { get; set; }
+    public byte IsRight { get; set; }
     public byte IsFiring { get; set; }
 
     public byte[] GetBytes(System.IO.Hashing.Crc32 crc32)
@@ -36,7 +40,12 @@ public class NetworkPacket
         WriteFloatToInt(data, ref offset, VelocityY);
         WriteFloatToInt(data, ref offset, Rotation);
         WriteFloatToInt(data, ref offset, Speed);
-        data[offset++] = IsFiring;
+        data[offset++] = (byte)(
+            (IsUp << 5) |
+            (IsDown << 4) |
+            (IsLeft << 3) |
+            (IsRight << 2) |
+            IsFiring);
 
         crc32.Reset();
         crc32.Append(ProtocolMagicNumber);
@@ -45,13 +54,6 @@ public class NetworkPacket
         var crc32value = crc32.GetCurrentHash();
         Buffer.BlockCopy(crc32value, 0, data, 0, crc32.HashLengthInBytes);
         return data;
-    }
-
-    private void WriteFloatToInt(byte[] data, ref int offset, float value)
-    {
-        var convertedValue = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)(value * 1_000)));
-        Buffer.BlockCopy(convertedValue, 0, data, offset, sizeof(int));
-        offset += sizeof(int);
     }
 
     public static NetworkPacket FromBytes(System.IO.Hashing.Crc32 crc32, byte[] data)
@@ -80,7 +82,14 @@ public class NetworkPacket
         var velocityY = ReadIntToFloat(data, ref offset);
         var rotation = ReadIntToFloat(data, ref offset);
         var speed = ReadIntToFloat(data, ref offset);
-        var isFiring = data[offset++];
+        var keyboard = data[offset++];
+
+        var isUp = (byte)((keyboard >> 5) & 1);
+        var isDown = (byte)((keyboard >> 4) & 1);
+        var isLeft = (byte)((keyboard >> 3) & 1);
+        var isRight = (byte)((keyboard >> 2) & 1);
+        var isFiring = (byte)(keyboard & 1);
+
         return new NetworkPacket()
         {
             PositionX = positionX,
@@ -89,8 +98,19 @@ public class NetworkPacket
             VelocityY = velocityY,
             Rotation = rotation,
             Speed = speed,
+            IsUp = isUp,
+            IsDown = isDown,
+            IsLeft = isLeft,
+            IsRight = isRight,
             IsFiring = isFiring
         };
+    }
+
+    private void WriteFloatToInt(byte[] data, ref int offset, float value)
+    {
+        var convertedValue = BitConverter.GetBytes(IPAddress.HostToNetworkOrder((int)(value * 1_000)));
+        Buffer.BlockCopy(convertedValue, 0, data, offset, sizeof(int));
+        offset += sizeof(int);
     }
 
     private static float ReadIntToFloat(byte[] data, ref int offset)
