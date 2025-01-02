@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Extended.BitmapFonts;
 using MonoGame.Extended.Input;
+using Rocket.Networking;
 using System;
 using System.Collections.Generic;
 
@@ -11,7 +12,7 @@ namespace Rocket;
 public class Game1 : Game
 {
     private GraphicsDeviceManager _graphics;
-    private Vector2 _baseScreenSize = new(1024, 768);
+    private Vector2 _baseScreenSize = new(GameSettings.ScreenWidth, GameSettings.ScreenHeight);
     private Matrix _globalTransformation;
     private bool _isFullscreen = false;
     private bool _isBorderless = false;
@@ -33,7 +34,7 @@ public class Game1 : Game
     private KeyboardState _keyboardState = new();
     private Rocket _rocket = new();
 
-    private bool _isActive = true;
+    private bool _isActive = false;
 
     public Game1()
     {
@@ -166,6 +167,13 @@ public class Game1 : Game
         base.Initialize();
     }
 
+    protected override void UnloadContent()
+    {
+        GameNetwork.Status = GameNetworkStatus.Disconnected;
+
+        base.UnloadContent();
+    }
+
     protected override void LoadContent()
     {
         _spriteBatch = new SpriteBatch(GraphicsDevice);
@@ -204,9 +212,13 @@ public class Game1 : Game
             ScalePresentationArea();
         }
 
-        if (_isActive)
+        if (_isActive && GameNetwork.Status == GameNetworkStatus.Connected)
         {
             _rocket.Update(gameTime, keyboardState);
+        }
+        else if (GameNetwork.Status == GameNetworkStatus.Connected)
+        {
+            _isActive = true;
         }
 
         base.Update(gameTime);
@@ -239,10 +251,10 @@ public class Game1 : Game
         if (!_isActive)
         {
             _spriteBatch.Draw(_tiles[0], new Vector2(50, 50), Color.White);
-            _spriteBatch.DrawString(_bmfont, $"Connecting to server...", new Vector2(350, 350), Color.White);
+            _spriteBatch.DrawString(_bmfont, GameNetworkStatus.Connected.ToString(), new Vector2(350, 350), Color.White);
         }
 
-        _spriteBatch.DrawString(_bmfont, $"Connecting to server...", new Vector2(350, 15), Color.White);
+        //_spriteBatch.DrawString(_bmfont, $"Connecting to server...", new Vector2(350, 15), Color.White);
         _spriteBatch.End();
 
         base.Draw(gameTime);

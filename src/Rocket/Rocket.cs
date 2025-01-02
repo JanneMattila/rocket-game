@@ -3,6 +3,8 @@ using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using MonoGame.Extended.Input;
+using Rocket.Networking;
+using RocketShared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -70,12 +72,14 @@ public class Rocket
 
         // Add shot by Space key
         if (_shotCooldown > 0) _shotCooldown--;
+        var isFiring = false;
         if (keyboardState.IsKeyDown(Keys.Space) && _shotCooldown == 0)
         {
             // Calculate new shot position
             var shotPosition = _position + new Vector2((float)Math.Cos(_rotation), (float)Math.Sin(_rotation)) * _rocketTexture.Width / 2;
             _shots.Add(new Shot(shotPosition, _rotation));
             _shotCooldown = 10;
+            isFiring = true;
         }
 
         var shotsToRemove = new List<Shot>();
@@ -127,6 +131,17 @@ public class Rocket
             _position.Y = 768 - _rocketTexture.Height / 2;
             _velocity.Y = 0;
         }
+
+        GameNetwork.Outgoing.Enqueue(new NetworkPacket()
+        {
+            PositionX = _position.X,
+            PositionY = _position.Y,
+            VelocityX = _velocity.X,
+            VelocityY = _velocity.Y,
+            Rotation = _rotation,
+            Speed = _speed,
+            IsFiring = isFiring ? (byte)1 : (byte)0
+        });
     }
 
 

@@ -15,6 +15,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "doc", "doc", "{B2309015-915
 		README.md = README.md
 	EndProjectSection
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RocketServer", "src\RocketServer\RocketServer.csproj", "{27E21423-F55D-4E21-B793-56EE1D09CA14}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RocketShared", "src\RocketShared\RocketShared.csproj", "{8ADB5011-E309-4AFE-AB0F-BAC19A9AF640}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -25,12 +29,22 @@ Global
 		{A0BF2BB1-4C08-4D0B-95C5-3753F6975F24}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A0BF2BB1-4C08-4D0B-95C5-3753F6975F24}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A0BF2BB1-4C08-4D0B-95C5-3753F6975F24}.Release|Any CPU.Build.0 = Release|Any CPU
+		{27E21423-F55D-4E21-B793-56EE1D09CA14}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27E21423-F55D-4E21-B793-56EE1D09CA14}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27E21423-F55D-4E21-B793-56EE1D09CA14}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27E21423-F55D-4E21-B793-56EE1D09CA14}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8ADB5011-E309-4AFE-AB0F-BAC19A9AF640}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8ADB5011-E309-4AFE-AB0F-BAC19A9AF640}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8ADB5011-E309-4AFE-AB0F-BAC19A9AF640}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8ADB5011-E309-4AFE-AB0F-BAC19A9AF640}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 		{A0BF2BB1-4C08-4D0B-95C5-3753F6975F24} = {16D12315-5AF8-44FB-A182-B561A2CD084E}
+		{27E21423-F55D-4E21-B793-56EE1D09CA14} = {16D12315-5AF8-44FB-A182-B561A2CD084E}
+		{8ADB5011-E309-4AFE-AB0F-BAC19A9AF640} = {16D12315-5AF8-44FB-A182-B561A2CD084E}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {644788B4-4F02-4491-93C2-A1CC6D7FC2E2}
