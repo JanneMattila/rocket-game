@@ -2,17 +2,12 @@
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using MonoGame.Extended.BitmapFonts;
 using MonoGame.Extended.Input;
 using Rocket.Networking;
 using RocketShared;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Net.Sockets;
-using System.Reflection.Metadata;
-using System.Text;
-using System.Threading.Tasks;
-
 namespace Rocket;
 
 public class Rocket
@@ -27,11 +22,15 @@ public class Rocket
     private bool _isLeft = false;
     private bool _isRight = false;
     private bool _isFiring = false;
+    private bool _isFiringNotSent = false;
 
     private readonly List<Shot> _shots = [];
-    private int _shotCooldown = 0;
+    private float _shotCooldown = 0;
+
+    private float _networkUpdateTime = 0;
 
     private Texture2D _rocketTexture;
+    private SpriteFont _basicFont;
 
     internal void Initialize()
     {
@@ -43,12 +42,16 @@ public class Rocket
 
     public void LoadContent(ContentManager content)
     {
-        _rocketTexture = content.Load<Texture2D>("Ships/Ship01");
+        _rocketTexture = content.Load<Texture2D>("Ships/playerShip3_red");
+        _basicFont = content.Load<SpriteFont>("Fonts/BasicFont");
+
         Shot.LoadContent(content);
     }
 
     public void Update(GameTime gameTime, KeyboardStateExtended keyboardState)
     {
+        float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+
         // Turn rocket by A and Left arrow keys
         var isUp = false;
         var isDown = false;
@@ -58,43 +61,37 @@ public class Rocket
 
         if (keyboardState.IsKeyDown(Keys.A) || keyboardState.IsKeyDown(Keys.Left))
         {
-            _rotation -= 2f * (float)gameTime.ElapsedGameTime.TotalSeconds;
+            _rotation -= 2f * deltaTime;
             isLeft = true;
         }
 
         // Turn rocket by D and Right arrow keys
         if (keyboardState.IsKeyDown(Keys.D) || keyboardState.IsKeyDown(Keys.Right))
         {
-            _rotation += 2f * (float)gameTime.ElapsedGameTime.TotalSeconds;
+            _rotation += 2f * deltaTime;
             isRight = true;
         }
 
         // Accelerate by W and Up arrow keys
         if (keyboardState.IsKeyDown(Keys.W) || keyboardState.IsKeyDown(Keys.Up))
         {
-            _velocity += new Vector2((float)Math.Cos(_rotation), (float)Math.Sin(_rotation)) * _speed * (float)gameTime.ElapsedGameTime.TotalSeconds;
+            _velocity += new Vector2((float)Math.Cos(_rotation), (float)Math.Sin(_rotation)) * _speed * deltaTime;
             isUp = true;
         }
 
-        // Decelerate by S and Down arrow keys
         if (keyboardState.IsKeyDown(Keys.S) || keyboardState.IsKeyDown(Keys.Down))
         {
-            _velocity -= new Vector2((float)Math.Cos(_rotation), (float)Math.Sin(_rotation)) * _speed * 0.5f * (float)gameTime.ElapsedGameTime.TotalSeconds;
             isDown = true;
-            if (_velocity.Length() < 0)
-            {
-                _velocity = Vector2.Zero;
-            }
         }
 
         // Add shot by Space key
-        if (_shotCooldown > 0) _shotCooldown--;
-        if (keyboardState.IsKeyDown(Keys.Space) && _shotCooldown == 0)
+        if (_shotCooldown > 0) _shotCooldown -= 50f * deltaTime;
+        if (keyboardState.IsKeyDown(Keys.Space) && _shotCooldown <= 0)
         {
             // Calculate new shot position
             var shotPosition = _position + new Vector2((float)Math.Cos(_rotation), (float)Math.Sin(_rotation)) * _rocketTexture.Width / 2;
             _shots.Add(new Shot(shotPosition, _rotation));
-            _shotCooldown = 10;
+            _shotCooldown += 10f;
             isFiring = true;
         }
 
@@ -114,13 +111,13 @@ public class Rocket
         }
 
         // Apply air resistance
-        _velocity *= 0.99f;
+        _velocity *= 1f - (0.5f *  deltaTime);
 
         // Apply gravity
-        _velocity.Y += 50f * (float)gameTime.ElapsedGameTime.TotalSeconds;
+        _velocity.Y += 50f * deltaTime;
 
         // Update position
-        _position += _velocity * (float)gameTime.ElapsedGameTime.TotalSeconds;
+        _position += _velocity * deltaTime;
 
         // Keep rocket on screen
         if (_position.X < _rocketTexture.Width / 2)
@@ -129,9 +126,9 @@ public class Rocket
             _velocity.X = 0;
         }
 
-        if (_position.X > 1024 - _rocketTexture.Width / 2)
+        if (_position.X > GameSettings.ScreenWidth - _rocketTexture.Width / 2)
         {
-            _position.X = 1024 - _rocketTexture.Width / 2;
+            _position.X = GameSettings.ScreenWidth - _rocketTexture.Width / 2;
             _velocity.X = 0;
         }
 
@@ -141,26 +138,38 @@ public class Rocket
             _velocity.Y = 0;
         }
 
-        if (_position.Y > 768 - _rocketTexture.Height / 2)
+        if (_position.Y > GameSettings.ScreenHeight - _rocketTexture.Height / 2)
         {
-            _position.Y = 768 - _rocketTexture.Height / 2;
+            _position.Y = GameSettings.ScreenHeight - _rocketTexture.Height / 2;
             _velocity.Y = 0;
         }
 
-        GameNetwork.Outgoing.Enqueue(new NetworkPacket()
+        _isFiringNotSent = _isFiringNotSent || isFiring;
+        if (_networkUpdateTime >= GameSettings.NetworkUpdateTime)
         {
-            PositionX = _position.X,
-            PositionY = _position.Y,
-            VelocityX = _velocity.X,
-            VelocityY = _velocity.Y,
-            Rotation = _rotation,
-            Speed = _speed,
-            IsUp = isUp ? (byte)1 : (byte)0,
-            IsDown = isDown ? (byte)1 : (byte)0,
-            IsLeft = isLeft ? (byte)1 : (byte)0,
-            IsRight = isRight ? (byte)1 : (byte)0,
-            IsFiring = isFiring ? (byte)1 : (byte)0
-        });
+            GameNetwork.Outgoing.Enqueue(new NetworkPacket()
+            {
+                PositionX = _position.X,
+                PositionY = _position.Y,
+                VelocityX = _velocity.X,
+                VelocityY = _velocity.Y,
+                Rotation = _rotation,
+                Speed = _speed,
+                IsUp = isUp ? (byte)1 : (byte)0,
+                IsDown = isDown ? (byte)1 : (byte)0,
+                IsLeft = isLeft ? (byte)1 : (byte)0,
+                IsRight = isRight ? (byte)1 : (byte)0,
+                IsFiring = _isFiringNotSent ? (byte)1 : (byte)0
+            });
+            if (GameNetwork.Outgoing.Count > 1)
+            {
+                GameNetwork.Outgoing.TryDequeue(out var _);
+            }
+            _isFiringNotSent = false;
+            _networkUpdateTime -= GameSettings.NetworkUpdateTime;
+        }
+
+        _networkUpdateTime += deltaTime;
     }
 
 
@@ -177,5 +186,7 @@ public class Rocket
 
         // Draw the rocket with the correct rotation
         spriteBatch.Draw(_rocketTexture, _position, null, Color.White, _rotation, new Vector2(_rocketTexture.Width / 2, _rocketTexture.Height / 2), 1f, SpriteEffects.None, 0f);
+
+        //spriteBatch.DrawString(_basicFont, $"Velocity: {_velocity}", new Vector2(350, 15), Color.White);
     }
 }

@@ -78,11 +78,11 @@ while (true)
     {
         var lastUpdateThreshold = now.AddSeconds(-5);
 
-        Console.WriteLine($"{players.Count} clients:");
+        //Console.WriteLine($"{players.Count} clients:");
         var toRemove = new List<IPEndPoint>();
         foreach (var b in players)
         {
-            Console.WriteLine($"{b.Key}: {b.Value.Messages} packets, PositionX: {b.Value.PositionX}, PositionY: {b.Value.PositionY}");
+            //Console.WriteLine($"{b.Key}: {b.Value.Messages} packets, PositionX: {b.Value.PositionX}, PositionY: {b.Value.PositionY}");
             if (b.Value.LastUpdated < lastUpdateThreshold)
             {
                 toRemove.Add(b.Key);

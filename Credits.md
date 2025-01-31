@@ -10,6 +10,46 @@ https://www.monogameextended.net/
 
 ## Game arts
 
+https://www.kenney.nl/assets/medals
+
+```
+Medal graphics by Kenney Vleugels (www.kenney.nl)
+
+You may use these graphics in personal and commercial projects.
+Credit (www.kenney.nl) would be nice but is not mandatory.
+```
+
+https://www.kenney.nl/assets/space-shooter-redux
+
+```
+	Space Shooter (Redux, plus fonts and sounds) by Kenney Vleugels (www.kenney.nl)
+
+			------------------------------
+
+			        License (CC0)
+	       http://creativecommons.org/publicdomain/zero/1.0/
+
+	You may use these graphics in personal and commercial projects.
+	Credit (Kenney or www.kenney.nl) would be nice but is not mandatory.
+```
+
+https://www.kenney.nl/assets/smoke-particles
+
+```
+	Smoke particle pack by Kenney Vleugels (www.kenney.nl)
+
+			------------------------------
+
+			        License (CC0)
+	       http://creativecommons.org/publicdomain/zero/1.0/
+
+	You may use these graphics in personal and commercial projects.
+	Credit (Kenney or www.kenney.nl) would be nice but is not mandatory.
+```
+
+
+---
+
 https://opengameart.org/content/space-cartoony-tiled-texture
 
 Space01.png

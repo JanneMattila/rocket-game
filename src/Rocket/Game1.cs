@@ -46,7 +46,16 @@ public class Game1 : Game
             IsFullScreen = false,
             GraphicsProfile = GraphicsProfile.HiDef
         };
+
+        _graphics.SynchronizeWithVerticalRetrace = false; // Disable VSync
+        IsFixedTimeStep = false; // Unlock framerate
+
+        //_graphics.PreparingDeviceSettings += (sender, e) =>
+        //{
+        //    e.GraphicsDeviceInformation.PresentationParameters.PresentationInterval = PresentInterval.Two;
+        //};
         Content.RootDirectory = "Content";
+        //TargetElapsedTime = TimeSpan.FromSeconds(1d / 30d);
     }
 
     #region Fullscreen and borderless window support
@@ -188,7 +197,7 @@ public class Game1 : Game
         _tiles.Add(Content.Load<Texture2D>("Dialogs/Background"));
 
         _background = Content.Load<Texture2D>("Backgrounds/Space01");
-        _infinite = Content.Load<Effect>("Backgrounds/Infinite");
+        //_infinite = Content.Load<Effect>("Backgrounds/Infinite");
 
         _rocket.LoadContent(Content);
         _otherRocket.LoadContent(Content);
@@ -232,19 +241,18 @@ public class Game1 : Game
     {
         GraphicsDevice.Clear(Color.Black);
 
-        int width = GraphicsDevice.Viewport.Width;
-        int height = GraphicsDevice.Viewport.Height;
+        //int width = GraphicsDevice.Viewport.Width;
+        //int height = GraphicsDevice.Viewport.Height;
 
-        Matrix projection = Matrix.CreateOrthographicOffCenter(0, width, height, 0, 0, 1);
-        Matrix uv_transform = GetUVTransform(_background, new Vector2(0, 0), 1f, GraphicsDevice.Viewport);
+        //Matrix projection = Matrix.CreateOrthographicOffCenter(0, width, height, 0, 0, 1);
+        //Matrix uv_transform = GetUVTransform(_background, new Vector2(0, 0), 1f, GraphicsDevice.Viewport);
 
-        _infinite.Parameters["view_projection"].SetValue(Matrix.Identity * projection);
-        _infinite.Parameters["uv_transform"].SetValue(Matrix.Invert(uv_transform));
+        //_infinite.Parameters["view_projection"].SetValue(Matrix.Identity * projection);
+        //_infinite.Parameters["uv_transform"].SetValue(Matrix.Invert(uv_transform));
 
-
-        _spriteBatch.Begin(effect: _infinite, samplerState: SamplerState.LinearWrap);
-        _spriteBatch.Draw(_background, GraphicsDevice.Viewport.Bounds, Color.White);
-        _spriteBatch.End();
+        //_spriteBatch.Begin(effect: _infinite, samplerState: SamplerState.LinearWrap);
+        //_spriteBatch.Draw(_background, GraphicsDevice.Viewport.Bounds, Color.White);
+        //_spriteBatch.End();
 
         _spriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, null, _globalTransformation);
 

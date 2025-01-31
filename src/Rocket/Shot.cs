@@ -27,7 +27,7 @@ public class Shot
 
     public static void LoadContent(ContentManager content)
     {
-        _texture = content.Load<Texture2D>("Ships/Shot");
+        _texture = content.Load<Texture2D>("Ships/laserRed07");
     }
 
     public void Update(GameTime gameTime)
