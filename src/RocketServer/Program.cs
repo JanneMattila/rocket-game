@@ -1,9 +1,8 @@
 ﻿using Microsoft.Extensions.Configuration;
-using System.Net.Sockets;
-using System.Net;
-using System.Diagnostics;
-using System;
 using RocketShared;
+using System.Diagnostics;
+using System.Net;
+using System.Net.Sockets;
 
 var builder = new ConfigurationBuilder()
     .AddUserSecrets<Program>()
@@ -11,7 +10,7 @@ var builder = new ConfigurationBuilder()
 
 var configuration = builder.Build();
 
-var udpPort = configuration.GetValue("udpPort", 3501);
+var udpPort = configuration.GetValue<int>("udpPort", 3501);
 
 Console.WriteLine($"UDP Port: {udpPort}");
 
@@ -42,7 +41,7 @@ while (true)
     var packet = NetworkPacket.FromBytes(crc32, receivedBytes);
 
     var now = DateTime.UtcNow;
-    RocketPlayer rocketPlayer;
+    RocketPlayer? rocketPlayer;
     if (!players.TryGetValue(remoteEndpoint, out rocketPlayer))
     {
         rocketPlayer = new RocketPlayer
@@ -103,7 +102,7 @@ class RocketPlayer
 {
     public byte PlayerID { get; set; }
     public byte SequenceNumber { get; set; }
-    public IPEndPoint Address { get; set; }
+    public IPEndPoint? Address { get; set; }
     public DateTime Created { get; set; }
     public DateTime LastUpdated { get; set; }
     public int Messages { get; set; }
