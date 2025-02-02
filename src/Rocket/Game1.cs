@@ -6,6 +6,7 @@ using MonoGame.Extended.Input;
 using Rocket.Networking;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace Rocket;
 
@@ -37,6 +38,9 @@ public class Game1 : Game
 
     private bool _isActive = false;
 
+    private const float _targetDrawElapsedTime = 10.0f / 30.0f; // 60 FPS
+    private float _drawUpdateTime = 0;
+
     public Game1()
     {
         _graphics = new GraphicsDeviceManager(this)
@@ -48,14 +52,21 @@ public class Game1 : Game
         };
 
         _graphics.SynchronizeWithVerticalRetrace = false; // Disable VSync
-        IsFixedTimeStep = false; // Unlock framerate
+        //_graphics.PreferredDepthStencilFormat = DepthFormat.Depth24;
 
+        IsFixedTimeStep = false; // Unlock framerate
+        //TargetElapsedTime = TimeSpan.FromSeconds(1d / 60d);
+
+        _graphics.PreparingDeviceSettings += (sender, e) =>
+        {
+            e.GraphicsDeviceInformation.PresentationParameters.PresentationInterval = PresentInterval.One;
+        };
         //_graphics.PreparingDeviceSettings += (sender, e) =>
         //{
-        //    e.GraphicsDeviceInformation.PresentationParameters.PresentationInterval = PresentInterval.Two;
+        //    e.GraphicsDeviceInformation.PresentationParameters.PresentationInterval = PresentInterval.Immediate;
         //};
+
         Content.RootDirectory = "Content";
-        //TargetElapsedTime = TimeSpan.FromSeconds(1d / 30d);
     }
 
     #region Fullscreen and borderless window support
@@ -239,6 +250,16 @@ public class Game1 : Game
 
     protected override void Draw(GameTime gameTime)
     {
+        //float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        //_drawUpdateTime += deltaTime;
+
+        //if (_drawUpdateTime < _targetDrawElapsedTime)
+        //{
+        //    base.Draw(gameTime);
+        //    return;
+        //}
+
+        //_drawUpdateTime -= _targetDrawElapsedTime;
         GraphicsDevice.Clear(Color.Black);
 
         //int width = GraphicsDevice.Viewport.Width;
