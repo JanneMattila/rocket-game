@@ -51,11 +51,11 @@ public class Game1 : Game
             GraphicsProfile = GraphicsProfile.HiDef
         };
 
-        _graphics.SynchronizeWithVerticalRetrace = false; // Disable VSync
+        //_graphics.SynchronizeWithVerticalRetrace = false; // Disable VSync
         //_graphics.PreferredDepthStencilFormat = DepthFormat.Depth24;
 
-        IsFixedTimeStep = false; // Unlock framerate
-        //TargetElapsedTime = TimeSpan.FromSeconds(1d / 60d);
+        //IsFixedTimeStep = true; // Unlock framerate
+        //TargetElapsedTime = TimeSpan.FromSeconds(1d / 30d);
 
         _graphics.PreparingDeviceSettings += (sender, e) =>
         {

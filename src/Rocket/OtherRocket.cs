@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using MonoGame.Extended;
 using MonoGame.Extended.Input;
 using Rocket.Networking;
 using RocketShared;
@@ -36,6 +37,7 @@ public class OtherRocket
     private bool _isLeft = false;
     private bool _isRight = false;
     private bool _isFiring = false;
+    private bool _mustLerp = false;
 
     private readonly List<Shot> _shots = [];
     private int _shotCooldown = 0;
@@ -44,10 +46,12 @@ public class OtherRocket
     private NetworkPacket _next = new();
     private List<Vector2> _networkUpdatePositions = new();
     private float _nextLerp = 0.5f;
+    private TimeSpan _networkUpdateDelay = TimeSpan.Zero;
 
     private Texture2D _rocketTexture;
     private Texture2D _rocketTexture2;
     private Texture2D _markTexture;
+    private SpriteFont _basicFont;
 
     internal void Initialize()
     {
@@ -65,6 +69,8 @@ public class OtherRocket
         _rocketTexture = content.Load<Texture2D>("Ships/playerShip3_orange");
         _rocketTexture2 = content.Load<Texture2D>("Ships/playerShip3_blue");
         _markTexture = content.Load<Texture2D>("Ships/Mark");
+        _basicFont = content.Load<SpriteFont>("Fonts/BasicFont");
+
         Shot.LoadContent(content);
     }
 
@@ -73,15 +79,23 @@ public class OtherRocket
         float deltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
         var updateFromNetwork = false;
         var isFiring = false;
+
         while (GameNetwork.Incoming.TryDequeue(out var packet))
         {
+            if (packet.Ticks <= _next.Ticks) continue;
             _next = packet;
 
-            isFiring = !isFiring && packet.IsFiring == 1 ? true : false;
+            isFiring = !isFiring && packet.IsFiring == 1;
 
-            //_position = new Vector2(packet.PositionX, packet.PositionY);
-            //_velocity = new Vector2(packet.VelocityX, packet.VelocityY);
-            //_rotation = packet.Rotation;
+            var distance = Vector2.Distance(_position, new Vector2(packet.PositionX, packet.PositionY));
+            if (distance > 50)
+            {
+                _mustLerp = true;
+            }
+            else
+            {
+                _mustLerp = false;
+            }
 
             //_positionShadow = new Vector2(packet.PositionX, packet.PositionY);
             //_rotationShadow = packet.Rotation;
@@ -89,15 +103,20 @@ public class OtherRocket
             _isActive = 50;
             updateFromNetwork = true;
 
-            _networkUpdatePositions.Add(_position);
+            //_networkUpdatePositions.Add(_position);
 
             _positionPrevious = _position;
             _velocityPrevious = _velocity;
             _rotationPrevious = _rotation;
             _speedPrevious = _speed;
 
-            _nextLerp = (_nextLerp + deltaTime) - GameSettings.NetworkUpdateTime;
-            if (_nextLerp < 0) _nextLerp = 0;
+            //_position = new Vector2(packet.PositionX, packet.PositionY);
+            _velocity = new Vector2(packet.VelocityX, packet.VelocityY);
+            _rotation = packet.Rotation;
+            _speed = packet.Speed;
+
+            _nextLerp = deltaTime;
+            _networkUpdateDelay = TimeSpan.FromTicks(DateTime.UtcNow.Ticks - packet.Ticks);
         }
 
         _isUp = _next.IsUp == 1;
@@ -106,19 +125,19 @@ public class OtherRocket
         _isRight = _next.IsRight == 1;
         _isFiring = isFiring;
 
-        if (_nextLerp <= GameSettings.NetworkUpdateTime)
+        if (_mustLerp)
         {
-            var nextLerp = _nextLerp / GameSettings.NetworkUpdateTime;
+            // https://en.wikipedia.org/wiki/Smoothstep
+            //var nextLerp = (float)(_nextLerp) / deltaTime * 2;
+            //nextLerp = nextLerp * nextLerp * (3f - 2f * nextLerp);
+            var nextLerp = 0.5f;
+
             _position.X = MathHelper.Lerp(_positionPrevious.X, _next.PositionX, nextLerp);
             _position.Y = MathHelper.Lerp(_positionPrevious.Y, _next.PositionY, nextLerp);
             _velocity.X = MathHelper.Lerp(_velocityPrevious.X, _next.VelocityX, nextLerp);
             _velocity.Y = MathHelper.Lerp(_velocityPrevious.Y, _next.VelocityY, nextLerp);
             _rotation = MathHelper.Lerp(_rotationPrevious, _next.Rotation, nextLerp);
             _speed = MathHelper.Lerp(_speedPrevious, _next.Speed, nextLerp);
-            //_velocity.X = _next.VelocityX;
-            //_velocity.Y = _next.VelocityY;
-            //_speed = _next.Speed;
-            //_rotation = _next.Rotation;
 
             if (_isFiring)
             {
@@ -235,10 +254,14 @@ public class OtherRocket
         //spriteBatch.Draw(_rocketTexture2, _positionShadow, null, Color.White, _rotationShadow, new Vector2(_rocketTexture.Width / 2, _rocketTexture.Height / 2), 1f, SpriteEffects.None, 0f);
         spriteBatch.Draw(_rocketTexture, _position, null, Color.White, _rotation, new Vector2(_rocketTexture.Width / 2, _rocketTexture.Height / 2), 1f, SpriteEffects.None, 0f);
 
+        spriteBatch.DrawLine(_position, _positionPrevious, Color.Blue, 2f);
+        spriteBatch.DrawLine(_position, new Vector2(_next.PositionX, _next.PositionY), Color.Red, 2f);
         // Draw network update locations
         foreach (var position in _networkUpdatePositions)
         {
             spriteBatch.Draw(_markTexture, position, null, Color.Red, 0, new Vector2(_markTexture.Width / 2, _markTexture.Height / 2), 1f, SpriteEffects.None, 0f);
         }
+
+        spriteBatch.DrawString(_basicFont, $"Debug: {_mustLerp}", new Vector2(350, 15), Color.White);
     }
 }

@@ -26,8 +26,8 @@ docker build -t "$acrName.azurecr.io/$image" -f src/RocketServer/Dockerfile .
 az acr login --name $acrName
 
 # Push image
-docker push ""$acrName.azurecr.io/$image"
+docker push "$acrName.azurecr.io/$image"
 
 # Deploy to ACI
-az container create --resource-group $resourceGroup --name $image --image "$acrName.azurecr.io/$image" --cpu 2 --memory 1 --registry-login-server "$acrName.azurecr.io" --registry-username $acrName --registry-password $acrPassword --ports 3501 --protocol UDP --ip-address public --restart-policy OnFailure
+az container create --resource-group $resourceGroup --name $image --image "$acrName.azurecr.io/$image" --cpu 1 --memory 1 --registry-login-server "$acrName.azurecr.io" --registry-username $acrName --registry-password $acrPassword --ports 3501 --protocol UDP --ip-address public --restart-policy OnFailure --os-type linux
 ```

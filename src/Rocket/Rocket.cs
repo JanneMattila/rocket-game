@@ -155,17 +155,23 @@ public class Rocket
                 VelocityY = _velocity.Y,
                 Rotation = _rotation,
                 Speed = _speed,
+                Delta = deltaTime,
                 IsUp = isUp ? (byte)1 : (byte)0,
                 IsDown = isDown ? (byte)1 : (byte)0,
                 IsLeft = isLeft ? (byte)1 : (byte)0,
                 IsRight = isRight ? (byte)1 : (byte)0,
                 IsFiring = _isFiringNotSent ? (byte)1 : (byte)0
             });
+
+            _isFiringNotSent = false;
             if (GameNetwork.Outgoing.Count > 1)
             {
-                GameNetwork.Outgoing.TryDequeue(out var _);
+                GameNetwork.Outgoing.TryDequeue(out var previous);
+                if (previous.IsFiring == 1)
+                {
+                    _isFiringNotSent = true;
+                }
             }
-            _isFiringNotSent = false;
             _networkUpdateTime -= GameSettings.NetworkUpdateTime;
         }
 

@@ -19,7 +19,7 @@ var listener = new UdpClient(udpPort);
 var remoteEndpoint = new IPEndPoint(IPAddress.Any, udpPort);
 
 System.IO.Hashing.Crc32 crc32 = new();
-var protocolMagicNumber = new ReadOnlySpan<byte>(BitConverter.GetBytes((short)0xFE));
+var protocolMagicNumber = new ReadOnlySpan<byte>(NetworkPacket.ProtocolMagicNumber);
 
 var stopwatch = new Stopwatch();
 stopwatch.Start();
@@ -53,12 +53,14 @@ while (true)
         players.Add(remoteEndpoint, rocketPlayer);
     }
 
+    rocketPlayer.Ticks = packet.Ticks;
     rocketPlayer.PositionX = packet.PositionX;
     rocketPlayer.PositionY = packet.PositionY;
     rocketPlayer.VelocityX = packet.VelocityX;
     rocketPlayer.VelocityY = packet.VelocityY;
     rocketPlayer.Rotation = packet.Rotation;
     rocketPlayer.Speed = packet.Speed;
+    rocketPlayer.Delta = packet.Speed;
     rocketPlayer.IsFiring = packet.IsFiring;
 
     rocketPlayer.LastUpdated = now;
@@ -107,11 +109,13 @@ class RocketPlayer
     public DateTime LastUpdated { get; set; }
     public int Messages { get; set; }
 
+    public long Ticks { get; set; }
     public float PositionX { get; set; }
     public float PositionY { get; set; }
     public float VelocityX { get; set; }
     public float VelocityY { get; set; }
     public float Rotation { get; set; }
     public float Speed { get; set; }
+    public float Delta { get; set; }
     public byte IsFiring { get; set; }
 }
