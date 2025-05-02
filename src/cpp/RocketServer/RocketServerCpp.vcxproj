@@ -24,6 +24,7 @@
     <ProjectGuid>{c27f25de-2ae1-4c8b-a853-239e799af090}</ProjectGuid>
     <RootNamespace>RocketServerCpp</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>RocketServer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -129,11 +130,18 @@
   <ItemGroup>
     <ClCompile Include="CRC32.cpp" />
     <ClCompile Include="NetworkPacket.cpp" />
-    <ClCompile Include="RocketServerCpp.cpp" />
+    <ClCompile Include="RocketServer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CRC32.h" />
     <ClInclude Include="NetworkPacket.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include=".dockerignore" />
+    <None Include="Dockerfile" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="CMakeLists.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
