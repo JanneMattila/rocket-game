@@ -21,10 +21,10 @@
     <ClCompile Include="main.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="CRC32.cpp">
+    <ClCompile Include="NetworkPacket.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="NetworkPacket.cpp">
+    <ClCompile Include="CRC32.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
