@@ -21,10 +21,9 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{c27f25de-2ae1-4c8b-a853-239e799af090}</ProjectGuid>
-    <RootNamespace>RocketServerCpp</RootNamespace>
+    <ProjectGuid>{6e0d1e19-3c3a-4615-964c-cf2c243aeaad}</ProjectGuid>
+    <RootNamespace>RocketConsole</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>RocketServer</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -77,6 +76,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\RocketServer;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -92,6 +92,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\RocketServer;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -107,6 +108,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\RocketServer;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -122,6 +124,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <AdditionalIncludeDirectories>..\RocketServer;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -132,31 +135,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="CRC32.cpp" />
-    <ClCompile Include="GamePacket.cpp" />
-    <ClCompile Include="Logger.cpp" />
-    <ClCompile Include="Network.cpp" />
-    <ClCompile Include="NetworkPacket.cpp" />
+    <ClCompile Include="..\RocketServer\CRC32.cpp" />
+    <ClCompile Include="..\RocketServer\GamePacket.cpp" />
+    <ClCompile Include="..\RocketServer\Logger.cpp" />
+    <ClCompile Include="..\RocketServer\Network.cpp" />
+    <ClCompile Include="..\RocketServer\NetworkPacket.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="Server.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CRC32.h" />
-    <ClInclude Include="GamePacket.h" />
-    <ClInclude Include="Logger.h" />
-    <ClInclude Include="LogLevel.h" />
-    <ClInclude Include="Network.h" />
-    <ClInclude Include="NetworkPacket.h" />
-    <ClInclude Include="NetworkPacketType.h" />
-    <ClInclude Include="Player.h" />
-    <ClInclude Include="Server.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include=".dockerignore" />
-    <None Include="Dockerfile" />
-  </ItemGroup>
-  <ItemGroup>
-    <Text Include="CMakeLists.txt" />
+    <ClInclude Include="..\RocketServer\CRC32.h" />
+    <ClInclude Include="..\RocketServer\GamePacket.h" />
+    <ClInclude Include="..\RocketServer\Logger.h" />
+    <ClInclude Include="..\RocketServer\LogLevel.h" />
+    <ClInclude Include="..\RocketServer\Network.h" />
+    <ClInclude Include="..\RocketServer\NetworkPacket.h" />
+    <ClInclude Include="..\RocketServer\NetworkPacketType.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

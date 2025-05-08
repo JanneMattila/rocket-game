@@ -5,6 +5,8 @@
 class CRC32
 {
 public:
+    static constexpr uint8_t CRC_SIZE = 4;
+
     CRC32();
     void reset();
     void update(const uint8_t* data, size_t length);

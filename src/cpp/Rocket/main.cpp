@@ -1,6 +1,3 @@
-// RocketCpp.cpp : Defines the entry point for the application.
-//
-
 #pragma comment(lib, "ws2_32.lib")
 
 #include "framework.h"

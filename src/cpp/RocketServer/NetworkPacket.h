@@ -2,39 +2,42 @@
 #include <cstdint>
 #include <vector>
 #include <stdexcept>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#pragma comment(lib, "ws2_32.lib")
+#else
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#endif
 #include "CRC32.h"
 
 class NetworkPacket {
+protected:
+    static constexpr uint8_t PROTOCOL_MAGIC_NUMBER = 0xFE;
+
+    std::vector<uint8_t> m_buffer;
+    CRC32 m_crc;
+
 public:
-    static constexpr uint8_t ProtocolMagicNumber = 0xFE;
-    static constexpr int ExpectedMessageSize =
-        sizeof(int32_t) + // CRC32
-        sizeof(int64_t) + // ticks
-        sizeof(int32_t) * 7 + // pos(2) + vel(2) + rotation + speed
-        sizeof(uint8_t); // keyboard
+    static constexpr uint8_t MINIMUM_PACKET_SIZE = CRC32::CRC_SIZE + 2 /* protocol magic number and packet type */;
 
-    int64_t Ticks = 0;
-    float PositionX = 0;
-    float PositionY = 0;
-    float VelocityX = 0;
-    float VelocityY = 0;
-    float Rotation = 0;
-    float Speed = 0;
-    float Delta = 0;
-    uint8_t IsUp = 0;
-    uint8_t IsDown = 0;
-    uint8_t IsLeft = 0;
-    uint8_t IsRight = 0;
-    uint8_t IsFiring = 0;
+    NetworkPacket();
+    NetworkPacket(std::vector<uint8_t>& data);
+    virtual std::vector<uint8_t> ToBytes();
+    virtual NetworkPacket FromBytes(const std::vector<uint8_t>& data);
+    int Validate(const std::vector<uint8_t>& data);
 
-    std::vector<uint8_t> ToBytes() const;
-    static NetworkPacket FromBytes(const std::vector<uint8_t>& data);
-
-private:
-    static void WriteInt32(std::vector<uint8_t>& buf, int32_t value);
-    static void WriteInt64(std::vector<uint8_t>& buf, int64_t value);
-    static void WriteKeyboard(std::vector<uint8_t>& buf, uint8_t up, uint8_t down, uint8_t left, uint8_t right, uint8_t firing);
-    static int64_t ReadInt64(const std::vector<uint8_t>& buf, size_t& offset);
-    static float ReadInt32ToFloat(const std::vector<uint8_t>& buf, size_t& offset);
-    static int32_t ReadInt32(const std::vector<uint8_t>& buf, size_t& offset);
+    void Clear();
+    void CalculateCRC();
+    void WriteInt8(int8_t value);
+    void WriteInt32(int32_t value);
+    void WriteInt64(int64_t value);
+    void WriteKeyboard(uint8_t up, uint8_t down, uint8_t left, uint8_t right, uint8_t firing);
+    int8_t ReadInt8(size_t& offset);
+    int32_t ReadInt32(size_t& offset);
+    float ReadInt32ToFloat(size_t& offset);
+    int64_t ReadInt64(size_t& offset);
 };
