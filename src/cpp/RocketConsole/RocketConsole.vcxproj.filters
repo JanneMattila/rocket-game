@@ -33,6 +33,9 @@
     <ClCompile Include="..\RocketServer\Network.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\RocketServer\Utils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\RocketServer\GamePacket.h">
@@ -54,6 +57,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\RocketServer\Network.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\RocketServer\Utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

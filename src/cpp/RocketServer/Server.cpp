@@ -1,5 +1,6 @@
 #include "Server.h"
 #include "NetworkPacketType.h"
+#include "Utils.h"
 
 std::string addrToString(const sockaddr_in& addr) {
 	char buf[INET_ADDRSTRLEN];
@@ -31,9 +32,9 @@ int Server::ExecuteGame()
 	while (m_running)
 	{
 		sockaddr_in clientAddr{};
-		std::vector<uint8_t> data;
 
-		int result = m_network->Receive(data, clientAddr);
+		int result = 0;
+		std::unique_ptr<NetworkPacket> networkPacket = m_network->Receive(clientAddr, result);
 		if (result == -1)
 		{
 			m_logger->Log(LogLevel::DEBUG, "Waiting for data");
@@ -46,18 +47,24 @@ int Server::ExecuteGame()
 			continue;
 		}
 
-		auto address = addrToString(clientAddr);
-		auto size = data.size();
+		std::string address = addrToString(clientAddr);
+		size_t size = networkPacket->Size();
 
 		m_logger->Log(LogLevel::DEBUG, "Received {} bytes from {}", size, address);
 
-		if (size < NetworkPacket::MINIMUM_PACKET_SIZE)
+		if (size < NetworkPacket::PAYLOAD_START_INDEX)
 		{
 			m_logger->Log(LogLevel::WARNING, "Received too small packet: {}", size);
 			continue;
 		}
 
-		auto packetType = static_cast<NetworkPacketType>(data[CRC32::CRC_SIZE + 1]);
+		if (networkPacket->Validate())
+		{
+			m_logger->Log(LogLevel::WARNING, "Packet validation failed");
+			continue;
+		}
+
+		NetworkPacketType packetType = networkPacket->GetNetworkPacketType();
 		auto packetTypeInt = static_cast<int>(packetType);
 		m_logger->Log(LogLevel::DEBUG, "Received packet type: {}", packetTypeInt);
 
@@ -65,32 +72,35 @@ int Server::ExecuteGame()
 		{
 		case NetworkPacketType::CONNECTION_REQUEST:
 		{
-			auto it = m_playersByAddress.find(clientAddr);
-			if (it == m_playersByAddress.end()) {
-				Player player;
-				player.ClientSalt = 0; // TODO: Generate a random salt
-
-				player.PlayerID = static_cast<uint8_t>(m_playersByAddress.size() + 1);
-				player.Address = clientAddr;
-				player.Created = std::chrono::steady_clock::now();
-				m_playersByAddress[clientAddr] = player;
-				it = m_playersByAddress.find(clientAddr);
+			if (size != 1000)
+			{
+				m_logger->Log(LogLevel::WARNING, "Received invalid packet size for connection request: {}", size);
+				continue;
 			}
-			Player& player = it->second;
-			m_logger->Log(LogLevel::INFO, "Player {} connected", player.PlayerID);
+
+			if (HandleConnectionRequest(std::move(networkPacket), clientAddr) != 0)
+			{
+				continue;
+			}
 		}
 		break;
-		case NetworkPacketType::CHALLENGE:
+		case NetworkPacketType::CHALLENGE_RESPONSE:
+			if (size != 1000)
+			{
+				m_logger->Log(LogLevel::WARNING, "Received invalid packet size for challenge: {}", size);
+				continue;
+			}
+
+
+			if (HandleChallengeResponse(std::move(networkPacket), clientAddr) != 0)
+			{
+				continue;
+			}
 			break;
 		case NetworkPacketType::GAME_STATE:
 			break;
 		case NetworkPacketType::DISCONNECT:
 		{
-			auto it = m_playersByAddress.find(clientAddr);
-			if (it != m_playersByAddress.end()) {
-				m_logger->Log(LogLevel::INFO, "Player {} disconnected", it->second.PlayerID);
-				m_playersByAddress.erase(it);
-			}
 		}
 		break;
 		default:
@@ -98,69 +108,128 @@ int Server::ExecuteGame()
 		}
 	}
 
-	/*
-	std::vector<uint8_t> buffer(NetworkPacket::ExpectedMessageSize);
-	auto lastCleanup = std::chrono::steady_clock::now();
+	return 0;
+}
 
-	while (m_running) {
-		sockaddr_in clientAddr{};
-		socklen_t addrLen = sizeof(clientAddr);
-		int received = recvfrom(sock, reinterpret_cast<char*>(buffer.data()), buffer.size(), 0, (sockaddr*)&clientAddr, &addrLen);
-		if (received != NetworkPacket::ExpectedMessageSize) {
-			continue;
-		}
-		try {
-			NetworkPacket packet = NetworkPacket::FromBytes(buffer);
-			auto now = std::chrono::steady_clock::now();
-			auto it = players.find(clientAddr);
-			if (it == players.end()) {
-				RocketPlayer player;
-				player.PlayerID = static_cast<uint8_t>(players.size() + 1);
-				player.Address = clientAddr;
-				player.Created = now;
-				player.LastUpdated = now;
-				players[clientAddr] = player;
-				it = players.find(clientAddr);
-			}
-			RocketPlayer& player = it->second;
-			player.Ticks = packet.Ticks;
-			player.PositionX = packet.PositionX;
-			player.PositionY = packet.PositionY;
-			player.VelocityX = packet.VelocityX;
-			player.VelocityY = packet.VelocityY;
-			player.Rotation = packet.Rotation;
-			player.Speed = packet.Speed;
-			player.IsFiring = packet.IsFiring;
-			player.LastUpdated = now;
-			player.Messages++;
-			// Forward to all other players
-			for (const auto& kv : players) {
-				if (!(kv.first == clientAddr)) {
-					sendto(sock, reinterpret_cast<const char*>(buffer.data()), buffer.size(), 0, (sockaddr*)&kv.first, sizeof(sockaddr_in));
-				}
-			}
-			// Cleanup every second
-			if (std::chrono::duration_cast<std::chrono::milliseconds>(now - lastCleanup).count() >= 1000) {
-				auto threshold = now - std::chrono::seconds(5);
-				std::vector<sockaddr_in> toRemove;
-				for (const auto& kv : players) {
-					if (kv.second.LastUpdated < threshold) {
-						toRemove.push_back(kv.first);
-					}
-				}
-				for (const auto& addr : toRemove) {
-					players.erase(addr);
-				}
-				lastCleanup = now;
-			}
-		}
-		catch (const std::exception& ex) {
-			// Ignore invalid packets
-			continue;
+int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr)
+{
+	// Check if the client is already connected
+	int playerID = 0;
+
+	for (const Player& player : m_players) {
+		if (player.Address == clientAddr) {
+			m_logger->Log(LogLevel::DEBUG, "Client {} has already started connection request", player.PlayerID);
+			playerID = player.PlayerID;
+			break;
 		}
 	}
-	*/
+
+	if (playerID == 0)
+	{
+		// Find a free player ID
+		for (int i = 1; i < MAX_PLAYERS; i++)
+		{
+			bool found = true;
+			for (const Player& player : m_players) {
+				if (player.PlayerID == i) {
+					found = false;
+					playerID = i;
+					break;
+				}
+			}
+
+			if (found) {
+				break;
+			}
+		}
+	}
+
+	if (playerID == 0)
+	{
+		// This is the first player
+		playerID = 1;
+	}
+
+	size_t offset = NetworkPacket::PAYLOAD_START_INDEX;
+	Player player;
+	player.ConnectionState = NetworkConnectionState::CONNECTING;
+	player.ClientSalt = networkPacket->ReadInt64(offset);
+	player.ServerSalt = Utils::GetRandomNumber64();
+	player.Salt = player.ClientSalt ^ player.ServerSalt;
+	player.PlayerID = playerID;
+	player.Address = clientAddr;
+	player.Created = std::chrono::steady_clock::now();
+	m_players.push_back(player);
+
+	m_logger->Log(LogLevel::DEBUG, "Player {} challenge", player.PlayerID);
+
+	networkPacket->Clear();
+	networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CHALLENGE));
+	networkPacket->WriteInt64(player.ClientSalt);
+	networkPacket->WriteInt64(player.ServerSalt);
+
+	if (m_network->SendToPlayer(*networkPacket, clientAddr) != 0)
+	{
+		m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Failed to send challenge");
+		return 1;
+	}
 	return 0;
+}
+
+
+int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr)
+{
+	size_t offset = NetworkPacket::PAYLOAD_START_INDEX;
+	int64_t salt = networkPacket->ReadInt64(offset);
+
+	for (Player& player : m_players) {
+		if (player.Address == clientAddr) {
+
+			networkPacket->Clear();
+
+			if (player.Salt == salt)
+			{
+				m_logger->Log(LogLevel::DEBUG, "HandleChallengeRequest: Player {} connection accepted", player.PlayerID);
+				
+				player.ConnectionState = NetworkConnectionState::CONNECTED;
+
+				networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CONNECTION_ACCEPTED));
+				networkPacket->WriteInt64(player.PlayerID);
+
+				if (m_network->SendToPlayer(*networkPacket, clientAddr) != 0)
+				{
+					m_logger->Log(LogLevel::WARNING, "HandleChallengeRequest: Failed to send connection accepted");
+					return 1;
+				}
+			}
+			else
+			{
+				m_logger->Log(LogLevel::WARNING, "HandleChallengeRequest: Player {} connection not accepted", player.PlayerID);
+
+				// Remove player from m_players
+				auto it = std::find_if(m_players.begin(), m_players.end(),
+					[&clientAddr](const Player& p) {
+						return p.Address == clientAddr;
+					});
+
+				if (it != m_players.end()) {
+					m_players.erase(it);
+				}
+
+				networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CONNECTION_DENIED));
+
+				if (m_network->SendToPlayer(*networkPacket, clientAddr) != 0)
+				{
+					m_logger->Log(LogLevel::WARNING, "HandleChallengeRequest: Failed to send connection not accepted");
+					return 1;
+				}
+			}
+			return 0;
+		}
+	}
+
+	m_logger->Log(LogLevel::WARNING, "HandleChallengeRequest: Player not found");
+	return 1;
 }
 
 int Server::PrepareToQuitGame()

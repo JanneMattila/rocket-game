@@ -13,6 +13,7 @@
 #include <unistd.h>
 #endif
 #include "CRC32.h"
+#include "NetworkPacketType.h"
 
 class NetworkPacket {
 protected:
@@ -22,14 +23,15 @@ protected:
     CRC32 m_crc;
 
 public:
-    static constexpr uint8_t MINIMUM_PACKET_SIZE = CRC32::CRC_SIZE + 2 /* protocol magic number and packet type */;
+    static constexpr uint8_t PAYLOAD_START_INDEX = CRC32::CRC_SIZE + 2 /* protocol magic number and packet type */;
 
     NetworkPacket();
     NetworkPacket(std::vector<uint8_t>& data);
     virtual std::vector<uint8_t> ToBytes();
     virtual NetworkPacket FromBytes(const std::vector<uint8_t>& data);
-    int Validate(const std::vector<uint8_t>& data);
+    int Validate();
 
+    size_t Size();
     void Clear();
     void CalculateCRC();
     void WriteInt8(int8_t value);
@@ -40,4 +42,5 @@ public:
     int32_t ReadInt32(size_t& offset);
     float ReadInt32ToFloat(size_t& offset);
     int64_t ReadInt64(size_t& offset);
+    NetworkPacketType GetNetworkPacketType();
 };

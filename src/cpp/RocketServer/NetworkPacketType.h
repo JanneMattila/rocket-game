@@ -8,7 +8,7 @@ enum class NetworkPacketType : int8_t {
     CHALLENGE = 3,
     CHALLENGE_RESPONSE = 4,
 	CONNECTION_ACCEPTED = 5,
-	DISCONNECT = 6,
 	
-    GAME_STATE = 10
+    GAME_STATE = 10,
+	DISCONNECT = 20
 };

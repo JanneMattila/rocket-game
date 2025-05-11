@@ -2,6 +2,7 @@
 #include "NetworkPacketType.h"
 #include <random>
 #include <cstdint>
+#include "Utils.h"
 
 std::string GetWSAErrorMessage(int errorCode)
 {
@@ -27,7 +28,7 @@ std::string GetWSAErrorMessage(int errorCode)
 	return message;
 }
 
-Network::Network(std::shared_ptr<Logger> logger) : m_logger(logger)
+Network::Network(std::shared_ptr<Logger> logger) : m_logger(logger), m_socket(0), m_connectionSalt(0), m_servaddr{}
 {
 }
 
@@ -62,7 +63,7 @@ int Network::Initialize(std::string server, int port)
 
 	// Set receive timeout
 #ifdef _WIN32
-	int timeoutMs = 1000; // 1 seconds
+	int timeoutMs = 5000; // 1 seconds
 	if (setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeoutMs, sizeof(timeoutMs)) < 0) {
 		auto errorCode = WSAGetLastError();
 		std::string errorMsg = GetWSAErrorMessage(errorCode);
@@ -71,7 +72,7 @@ int Network::Initialize(std::string server, int port)
 	}
 #else
 	struct timeval timeout;
-	timeout.tv_sec = 1; // 5 seconds
+	timeout.tv_sec = 5; // 5 seconds
 	timeout.tv_usec = 0; // 0 microseconds
 	setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 #endif
@@ -81,6 +82,7 @@ int Network::Initialize(std::string server, int port)
 
 	if (server.empty())
 	{
+		m_isServer = true;
 		m_servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
 		m_logger->Log(LogLevel::INFO, "Initialize: Bind on port: {}", port);
@@ -102,85 +104,128 @@ int Network::Initialize(std::string server, int port)
 	return 0;
 }
 
+bool Network::IsServerAddress(sockaddr_in& clientAddr)
+{
+	return (m_servaddr.sin_family == clientAddr.sin_family &&
+		m_servaddr.sin_addr.s_addr == clientAddr.sin_addr.s_addr &&
+		m_servaddr.sin_port == clientAddr.sin_port);
+}
+
 int Network::EstablishConnection()
 {
-	// Create random salt value
-	std::random_device rd; // Non-deterministic random number generator
-	std::mt19937_64 gen(rd()); // Seed the Mersenne Twister with random_device
-	std::uniform_int_distribution<uint64_t> dis(0, UINT64_MAX); // Uniform distribution
+	uint64_t clientSalt = Utils::GetRandomNumber64();
+	std::unique_ptr<NetworkPacket> networkPacket = std::make_unique<NetworkPacket>();
 
-	uint64_t clientSalt = dis(gen); // Generate a random 64-bit number
-
-	std::unique_ptr<NetworkPacket> connectionPacket = std::make_unique<NetworkPacket>();
-	connectionPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CONNECTION_REQUEST));
-	connectionPacket->WriteInt64(clientSalt);
+	m_connectionState = NetworkConnectionState::CONNECTING;
+	networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CONNECTION_REQUEST));
+	networkPacket->WriteInt64(clientSalt);
+	
 	// Pad the packet to 1000 bytes
-	for (size_t i = 0; i < 250; i++)
+	for (size_t i = 0; i < 1000 - NetworkPacket::PAYLOAD_START_INDEX - sizeof(uint64_t); i++)
 	{
-		connectionPacket->WriteInt32(0);
+		networkPacket->WriteInt8(0);
 	}
 
-	auto data = connectionPacket->ToBytes();
+	int result = 0;
 
 	m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Send connection request");
 
-	if (Send(data) != 0) return 1;
-
-	std::vector<uint8_t> responseData;
-	sockaddr_in clientAddr{};
+	if (SendToServer(*networkPacket) != 0)
+	{
+		m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Failed to send connection request");
+		return 1;
+	}
 
 	m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Waiting for response");
 
-	if (Receive(responseData, clientAddr)) return 1;
+	sockaddr_in clientAddr{};
+	networkPacket = Receive(clientAddr, result);
 
-	if (connectionPacket->Validate(responseData)) return 1;
-
-	size_t offset = CRC32::CRC_SIZE;
-
-	// Check if the packet type is correct
-	if (connectionPacket->ReadInt8(offset) != static_cast<int8_t>(NetworkPacketType::CHALLENGE))
+	if (result != 0)
 	{
+		m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Timeout waiting for response to connection request");
+		return 1;
+	}
+
+	if (networkPacket->Validate())
+	{
+		m_connectionState = NetworkConnectionState::DISCONNECTED;
+		m_logger->Log(LogLevel::WARNING, "EstablishConnection: Packet validation failed");
+		return 1;
+	}
+
+	if (networkPacket->GetNetworkPacketType() != NetworkPacketType::CHALLENGE)
+	{
+		m_connectionState = NetworkConnectionState::DISCONNECTED;
 		m_logger->Log(LogLevel::WARNING, "EstablishConnection: Invalid packet type");
 		return 1;
 	}
 
-	uint64_t receivedClientSalt = connectionPacket->ReadInt64(offset);
+	size_t offset = NetworkPacket::PAYLOAD_START_INDEX;
+	uint64_t receivedClientSalt = networkPacket->ReadInt64(offset);
 	if (receivedClientSalt != clientSalt)
 	{
+		m_connectionState = NetworkConnectionState::DISCONNECTED;
 		m_logger->Log(LogLevel::WARNING, "EstablishConnection: Client salt mismatch: {} <> {}", clientSalt, receivedClientSalt);
 		return 1;
 	}
 
 	// Extract server salt from the response
-	uint64_t serverSalt = connectionPacket->ReadInt64(offset);
+	uint64_t serverSalt = networkPacket->ReadInt64(offset);
 	m_connectionSalt = clientSalt ^ serverSalt;
 
-	connectionPacket->Clear();
+	networkPacket->Clear();
 
 	// Create a new packet with the connection salt
-	connectionPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CHALLENGE_RESPONSE));
-	connectionPacket->WriteInt64(m_connectionSalt);
+	networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CHALLENGE_RESPONSE));
+	networkPacket->WriteInt64(m_connectionSalt);
 	// Pad the packet to 1000 bytes
-	for (size_t i = 0; i < 250; i++)
+	for (size_t i = 0; i < 1000 - NetworkPacket::PAYLOAD_START_INDEX - sizeof(uint64_t); i++)
 	{
-		connectionPacket->WriteInt32(0);
+		networkPacket->WriteInt8(0);
 	}
-	data = connectionPacket->ToBytes();
-	if (Send(data) != 0) return 1;
-	responseData.clear();
-	if (Receive(responseData, clientAddr)) return 1;
-	if (connectionPacket->Validate(responseData)) return 1;
-	// Extract server salt from the response
-	offset = CRC32::CRC_SIZE;
-	uint64_t serverSalt2 = connectionPacket->ReadInt64(offset);
+	if (SendToServer(*networkPacket) != 0)
+	{
+		m_connectionState = NetworkConnectionState::DISCONNECTED;
+		m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Failed to send challenge request");
+		return 1;
+	}
+
+	networkPacket = Receive(clientAddr, result);
+	if (result != 0)
+	{
+		m_connectionState = NetworkConnectionState::DISCONNECTED;
+		m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Timeout waiting for response to challenge request");
+		return 1;
+	}
+	if (networkPacket->Validate())
+	{
+		m_connectionState = NetworkConnectionState::DISCONNECTED;
+		m_logger->Log(LogLevel::WARNING, "EstablishConnection: Challenge packet validation failed");
+		return 1;
+	}
+
+	if (networkPacket->GetNetworkPacketType() != NetworkPacketType::CONNECTION_ACCEPTED)
+	{
+		m_connectionState = NetworkConnectionState::DISCONNECTED;
+		m_logger->Log(LogLevel::WARNING, "EstablishConnection: Connection was not accepted");
+		return 1;
+	}
+
+	// TODO: Read connection accepted payload
+	//offset = NetworkPacket::PAYLOAD_START_INDEX;
+	//uint64_t serverSalt2 = networkPacket->ReadInt64(offset);
+
+	m_connectionState = NetworkConnectionState::CONNECTED;
+	m_logger->Log(LogLevel::INFO, "EstablishConnection: Connected");
 
 	return 0;
 }
 
-int Network::Receive(std::vector<uint8_t>& data, sockaddr_in& clientAddr)
+std::unique_ptr<NetworkPacket> Network::Receive(sockaddr_in& clientAddr, int &result)
 {
 	// Resize the vector to the maximum buffer size
-	data.resize(1024);
+	std::vector<uint8_t> data(1024);
 
 	socklen_t addrLen = sizeof(clientAddr);
 	int n = recvfrom(
@@ -197,23 +242,27 @@ int Network::Receive(std::vector<uint8_t>& data, sockaddr_in& clientAddr)
 		if (errorCode == WSAETIMEDOUT)
 		{
 			// Timeout, no data received
-			return -1;
+			result = -1;
+			return nullptr;
 		}
 
 		std::string errorMsg = GetWSAErrorMessage(errorCode);
 		m_logger->Log(LogLevel::EXCEPTION, "Receive: Failed with error: {}: {}", errorCode, errorMsg);
-		return 1;
+		result = 1;
+		return nullptr;
 	}
 	if (n == 0)
 	{
 		m_logger->Log(LogLevel::WARNING, "Receive: No data received");
-		return 1;
+		result = 1;
+		return nullptr;
 	}
 
 	// Resize the vector to the actual number of bytes received
 	data.resize(n);
 
 	// Log the received buffer as comma seperated values as string
+#if _DEBUG
 	std::string bufferString;
 	for (size_t i = 0; i < data.size(); i++)
 	{
@@ -224,12 +273,25 @@ int Network::Receive(std::vector<uint8_t>& data, sockaddr_in& clientAddr)
 		}
 	}
 	m_logger->Log(LogLevel::DEBUG, "Receive: Received {} bytes: {}", n, bufferString);
+#endif
 
-	return 0;
+	return std::make_unique<NetworkPacket>(data);
 }
 
-int Network::Send(std::vector<uint8_t>& data)
+int Network::SendToServer(NetworkPacket& networkPacket)
 {
+	if (m_isServer)
+	{
+		m_logger->Log(LogLevel::EXCEPTION, "SendToServer: Cannot send to server from server");
+		return 1;
+	}
+
+	networkPacket.CalculateCRC();
+
+	auto size = networkPacket.Size();
+	auto data = networkPacket.ToBytes();
+
+#if _DEBUG
 	// Log the send buffer as comma seperated values as string
 	std::string bufferString;
 	for (size_t i = 0; i < data.size(); i++)
@@ -240,10 +302,48 @@ int Network::Send(std::vector<uint8_t>& data)
 			bufferString += ",";
 		}
 	}
-	auto size = data.size();
 	m_logger->Log(LogLevel::DEBUG, "Send: Sending {} bytes: {}", size, bufferString);
+#endif
 
 	if (sendto(m_socket, (char*)data.data(), (int)size, 0, (SOCKADDR*)&m_servaddr, sizeof(m_servaddr)) == SOCKET_ERROR)
+	{
+		auto errorCode = WSAGetLastError();
+		std::string errorMsg = GetWSAErrorMessage(errorCode);
+		m_logger->Log(LogLevel::EXCEPTION, "Send: Failed with error: {}: {}", errorCode, errorMsg);
+		return 1;
+	}
+	return 0;
+}
+
+
+int Network::SendToPlayer(NetworkPacket& networkPacket, sockaddr_in& clientAddr)
+{
+	if (!m_isServer)
+	{
+		m_logger->Log(LogLevel::EXCEPTION, "SendToPlayer: Cannot send to player from player");
+		return 1;
+	}
+
+	networkPacket.CalculateCRC();
+
+	auto size = networkPacket.Size();
+	auto data = networkPacket.ToBytes();
+
+#if _DEBUG
+	// Log the send buffer as comma seperated values as string
+	std::string bufferString;
+	for (size_t i = 0; i < data.size(); i++)
+	{
+		bufferString += std::to_string(data[i]);
+		if (i != data.size() - 1)
+		{
+			bufferString += ",";
+		}
+	}
+	m_logger->Log(LogLevel::DEBUG, "Send: Sending {} bytes: {}", size, bufferString);
+#endif
+
+	if (sendto(m_socket, (char*)data.data(), (int)size, 0, (SOCKADDR*)&clientAddr, sizeof(clientAddr)) == SOCKET_ERROR)
 	{
 		auto errorCode = WSAGetLastError();
 		std::string errorMsg = GetWSAErrorMessage(errorCode);

@@ -5,6 +5,7 @@
 #else
 #include <arpa/inet.h>
 #endif
+#include "NetworkPacketType.h"
 
 NetworkPacket::NetworkPacket()
 {
@@ -14,6 +15,11 @@ NetworkPacket::NetworkPacket()
 NetworkPacket::NetworkPacket(std::vector<uint8_t>& data)
 	: m_buffer(data)
 {
+}
+
+size_t NetworkPacket::Size()
+{
+	return m_buffer.size();
 }
 
 void NetworkPacket::Clear()
@@ -87,14 +93,21 @@ NetworkPacket NetworkPacket::FromBytes(const std::vector<uint8_t>& data)
 	return *this;
 }
 
-int NetworkPacket::Validate(const std::vector<uint8_t>& data) {
+NetworkPacketType NetworkPacket::GetNetworkPacketType()
+{
+	size_t offset = CRC32::CRC_SIZE + 1 /* protocol magic number */;
+	int8_t networkPacketType = ReadInt8(offset);
+	return static_cast<NetworkPacketType>(networkPacketType);
+}
+
+int NetworkPacket::Validate() {
 	// CRC32 check
 	uint32_t received_crc = 0;
-	for (int i = 0; i < 4; ++i) received_crc |= (data[i] << (i * 8));
+	for (int i = 0; i < 4; ++i) received_crc |= (m_buffer[i] << (i * 8));
 	m_crc.reset();
 	uint8_t magic = PROTOCOL_MAGIC_NUMBER;
 	m_crc.update(&magic, 1);
-	m_crc.update(data.data() + 4, data.size() - 4);
+	m_crc.update(m_buffer.data() + 4, m_buffer.size() - 4);
 	uint32_t calc_crc = m_crc.value();
 	if (received_crc != calc_crc)
 	{

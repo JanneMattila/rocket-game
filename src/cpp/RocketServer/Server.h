@@ -17,12 +17,14 @@ namespace std {
 class Server
 {
 private:
+	static constexpr int8_t MAX_PLAYERS = 8;
+
 	bool m_running = true;
-	std::unordered_map<uint8_t, Player> m_players;
-	std::vector<Player> m_playerList;
+
 	std::shared_ptr<Logger> m_logger;
 	std::unique_ptr<Network> m_network;
-	std::unordered_map<sockaddr_in, Player> m_playersByAddress;
+
+	std::vector<Player> m_players;
 
 public:
 	Server(std::shared_ptr<Logger> logger, std::unique_ptr<Network> network);
@@ -34,5 +36,8 @@ public:
 
 	int PrepareToQuitGame();
 	int QuitGame();
+
+	int HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr);
+	int HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr);
 };
 

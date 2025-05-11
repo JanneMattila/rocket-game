@@ -10,12 +10,15 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #endif
+#include "NetworkConnectionState.h"
 
 struct Player {
 	uint64_t ClientSalt = 0;
 	uint64_t ServerSalt = 0;
+	uint64_t Salt = 0;
 	uint8_t PlayerID = 0;
 	sockaddr_in Address{};
+	NetworkConnectionState ConnectionState = NetworkConnectionState::DISCONNECTED;
 	std::chrono::steady_clock::time_point Created;
 	std::chrono::steady_clock::time_point LastUpdated;
 	int Messages = 0;

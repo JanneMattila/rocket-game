@@ -66,6 +66,52 @@ int main(int argc, char** argv)
 		std::this_thread::sleep_for(std::chrono::seconds(3));
 	}
 
+	logger->Log(LogLevel::INFO, "Connection established");
+
+	// Main loop
+	auto isRunning = true;
+	while (isRunning) {
+		sockaddr_in clientAddr{};
+		int result = 0;
+		std::unique_ptr<NetworkPacket> networkPacket = network->Receive(clientAddr, result);
+		if (result == -1) {
+			logger->Log(LogLevel::DEBUG, "Waiting for data");
+			continue;
+		}
+		if (result != 0) {
+			logger->Log(LogLevel::DEBUG, "Failed to receive data");
+			continue;
+		}
+
+		if (!network->IsServerAddress(clientAddr)) {
+			logger->Log(LogLevel::DEBUG, "Received data from unknown address");
+			continue;
+		}
+
+		size_t size = networkPacket->Size();
+		//logger->Log(LogLevel::DEBUG, "Received {} bytes from {}", size, address);
+		if (size < NetworkPacket::PAYLOAD_START_INDEX) {
+			logger->Log(LogLevel::WARNING, "Received too small packet: {}", size);
+			continue;
+		}
+		if (networkPacket->Validate()) {
+			logger->Log(LogLevel::WARNING, "Invalid packet");
+			continue;
+		}
+		switch (networkPacket->GetNetworkPacketType()) {
+		case NetworkPacketType::GAME_STATE:
+			logger->Log(LogLevel::DEBUG, "Game state packet received");
+			break;
+		case NetworkPacketType::DISCONNECT:
+			logger->Log(LogLevel::DEBUG, "Disconnect packet received");
+			isRunning = false;
+			break;
+		default:
+			logger->Log(LogLevel::WARNING, "Unknown packet type");
+			break;
+		}
+	}
+
 	std::cout << "Rocket Console finished." << std::endl;
 	return 0;
 }

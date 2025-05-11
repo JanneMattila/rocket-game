@@ -140,6 +140,7 @@
     <ClCompile Include="..\RocketServer\Logger.cpp" />
     <ClCompile Include="..\RocketServer\Network.cpp" />
     <ClCompile Include="..\RocketServer\NetworkPacket.cpp" />
+    <ClCompile Include="..\RocketServer\Utils.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -150,6 +151,7 @@
     <ClInclude Include="..\RocketServer\Network.h" />
     <ClInclude Include="..\RocketServer\NetworkPacket.h" />
     <ClInclude Include="..\RocketServer\NetworkPacketType.h" />
+    <ClInclude Include="..\RocketServer\Utils.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
