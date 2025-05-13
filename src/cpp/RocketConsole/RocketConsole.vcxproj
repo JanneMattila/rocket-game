@@ -138,9 +138,10 @@
     <ClCompile Include="..\RocketServer\CRC32.cpp" />
     <ClCompile Include="..\RocketServer\GamePacket.cpp" />
     <ClCompile Include="..\RocketServer\Logger.cpp" />
-    <ClCompile Include="..\RocketServer\Network.cpp" />
     <ClCompile Include="..\RocketServer\NetworkPacket.cpp" />
     <ClCompile Include="..\RocketServer\Utils.cpp" />
+    <ClCompile Include="Client.cpp" />
+    <ClCompile Include="ClientNetwork.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -148,10 +149,11 @@
     <ClInclude Include="..\RocketServer\GamePacket.h" />
     <ClInclude Include="..\RocketServer\Logger.h" />
     <ClInclude Include="..\RocketServer\LogLevel.h" />
-    <ClInclude Include="..\RocketServer\Network.h" />
     <ClInclude Include="..\RocketServer\NetworkPacket.h" />
     <ClInclude Include="..\RocketServer\NetworkPacketType.h" />
     <ClInclude Include="..\RocketServer\Utils.h" />
+    <ClInclude Include="Client.h" />
+    <ClInclude Include="ClientNetwork.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

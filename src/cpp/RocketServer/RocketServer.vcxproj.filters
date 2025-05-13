@@ -33,7 +33,7 @@
     <ClCompile Include="GamePacket.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Network.cpp">
+    <ClCompile Include="ServerNetwork.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Server.cpp">
@@ -62,9 +62,6 @@
     <ClInclude Include="GamePacket.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Network.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Player.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -75,6 +72,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NetworkConnectionState.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ServerNetwork.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

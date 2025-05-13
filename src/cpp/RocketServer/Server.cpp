@@ -15,7 +15,7 @@ bool operator==(const sockaddr_in& a, const sockaddr_in& b) {
 }
 
 
-Server::Server(std::shared_ptr<Logger> logger, std::unique_ptr<Network> network)
+Server::Server(std::shared_ptr<Logger> logger, std::unique_ptr<ServerNetwork> network)
 	: m_logger(logger), m_network(std::move(network)) {
 }
 
@@ -168,7 +168,7 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 	networkPacket->WriteInt64(player.ClientSalt);
 	networkPacket->WriteInt64(player.ServerSalt);
 
-	if (m_network->SendToPlayer(*networkPacket, clientAddr) != 0)
+	if (m_network->Send(*networkPacket, clientAddr) != 0)
 	{
 		m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Failed to send challenge");
 		return 1;
@@ -182,9 +182,10 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 	size_t offset = NetworkPacket::PAYLOAD_START_INDEX;
 	int64_t salt = networkPacket->ReadInt64(offset);
 
-	for (Player& player : m_players) {
-		if (player.Address == clientAddr) {
-
+	for (Player& player : m_players)
+	{
+		if (player.Address == clientAddr)
+		{
 			networkPacket->Clear();
 
 			if (player.Salt == salt)
@@ -196,7 +197,7 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 				networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CONNECTION_ACCEPTED));
 				networkPacket->WriteInt64(player.PlayerID);
 
-				if (m_network->SendToPlayer(*networkPacket, clientAddr) != 0)
+				if (m_network->Send(*networkPacket, clientAddr) != 0)
 				{
 					m_logger->Log(LogLevel::WARNING, "HandleChallengeRequest: Failed to send connection accepted");
 					return 1;
@@ -218,7 +219,7 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 
 				networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CONNECTION_DENIED));
 
-				if (m_network->SendToPlayer(*networkPacket, clientAddr) != 0)
+				if (m_network->Send(*networkPacket, clientAddr) != 0)
 				{
 					m_logger->Log(LogLevel::WARNING, "HandleChallengeRequest: Failed to send connection not accepted");
 					return 1;

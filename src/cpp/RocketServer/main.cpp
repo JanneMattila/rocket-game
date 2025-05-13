@@ -11,7 +11,7 @@
 #include <algorithm>
 #include "NetworkPacket.h"
 #include "Logger.h"
-#include "Network.h"
+#include "ServerNetwork.h"
 #include "NetworkPacketType.h"
 #include "Player.h"
 #include "Server.h"
@@ -53,7 +53,7 @@ int main()
 
 	g_logger->Log(LogLevel::INFO, "Listening in UDP Port: {}", udpPort);
 
-	std::unique_ptr<Network> network = std::make_unique<Network>(g_logger);
+	std::unique_ptr<ServerNetwork> network = std::make_unique<ServerNetwork>(g_logger);
 	g_server = std::make_unique<Server>(g_logger, std::move(network));
 
 	if (g_server->Initialize(udpPort) != 0)
@@ -69,6 +69,11 @@ int main()
 	}
 
 	g_server->QuitGame();
+
+#if _DEBUG
+	g_logger->Log(LogLevel::DEBUG, "Press any key to exit...");
+	std::cin.get();
+#endif
 
 	return 0;
 }

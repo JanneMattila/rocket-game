@@ -2,7 +2,9 @@
 #include <cstring>
 #include <chrono>
 #include <thread>
-#include "Network.h"
+#include "ClientNetwork.h"
+#include "Client.h"
+#include <csignal>
 
 std::string GetEnvVariable(const char* varName) {
 	std::string result;
@@ -24,10 +26,31 @@ std::string GetEnvVariable(const char* varName) {
 	return result;
 }
 
+// Global variables for cleanup
+std::shared_ptr<Logger> g_logger;
+std::unique_ptr<Client> g_client;
+
+// Signal handler for Ctrl+C
+void SignalHandler(int signal)
+{
+	if (signal == SIGINT || signal == SIGTERM)
+	{
+		g_logger->Log(LogLevel::INFO, "Signal detected ({}). Starting to close the game.", signal);
+		if (g_client)
+		{
+			g_client->PrepareToQuitGame();
+		}
+	}
+}
+
 int main(int argc, char** argv)
 {
-	std::shared_ptr<Logger> logger = std::make_shared<Logger>();
-	logger->SetLogLevel(LogLevel::DEBUG);
+	// Register the signal handler for SIGINT and SIGTERM
+	std::signal(SIGINT, SignalHandler);
+	std::signal(SIGTERM, SignalHandler);
+
+	g_logger = std::make_shared<Logger>();
+	g_logger->SetLogLevel(LogLevel::DEBUG);
 
 	std::cout << "Rocket Console" << std::endl;
 
@@ -37,81 +60,56 @@ int main(int argc, char** argv)
 	// Check for environment variables
 	std::string envServer = GetEnvVariable("UDP_SERVER");
 	std::string envPort = GetEnvVariable("UDP_PORT");
-	if (!envPort.empty()) {
+	if (!envPort.empty())
+	{
 		udpPort = std::atoi(envPort.data());
 	}
-	if (!envServer.empty()) {
+	if (!envServer.empty())
+	{
 		server = envServer;
 	}
 
 	// Check for command line arguments
-	if (argc > 1) {
+	if (argc > 1)
+	{
 		server = argv[1];
 	}
-	if (argc > 2) {
+	if (argc > 2)
+	{
 		udpPort = std::atoi(argv[2]);
 	}
 
-	logger->Log(LogLevel::INFO, "UDP Server: {}:{}", server, udpPort);
+	g_logger->Log(LogLevel::INFO, "UDP Server: {}:{}", server, udpPort);
 
-	std::unique_ptr<Network> network = std::make_unique<Network>(logger);
+	std::unique_ptr<ClientNetwork> network = std::make_unique<ClientNetwork>(g_logger);
+	g_client = std::make_unique<Client>(g_logger, std::move(network));
 
-	if (network->Initialize(server, udpPort) != 0) {
-		logger->Log(LogLevel::WARNING, "Failed to initialize network");
+	if (g_client->Initialize(server, udpPort) != 0)
+	{
+		g_logger->Log(LogLevel::WARNING, "Failed to initialize network");
 		return 1;
 	}
 
-	while (network->EstablishConnection() != 0) {
-		logger->Log(LogLevel::WARNING, "Failed to establish connection");
+	while (g_client->EstablishConnection() != 0)
+	{
+		g_logger->Log(LogLevel::WARNING, "Failed to establish connection");
 		std::this_thread::sleep_for(std::chrono::seconds(3));
 	}
 
-	logger->Log(LogLevel::INFO, "Connection established");
+	g_logger->Log(LogLevel::INFO, "Connection established");
 
-	// Main loop
-	auto isRunning = true;
-	while (isRunning) {
-		sockaddr_in clientAddr{};
-		int result = 0;
-		std::unique_ptr<NetworkPacket> networkPacket = network->Receive(clientAddr, result);
-		if (result == -1) {
-			logger->Log(LogLevel::DEBUG, "Waiting for data");
-			continue;
-		}
-		if (result != 0) {
-			logger->Log(LogLevel::DEBUG, "Failed to receive data");
-			continue;
-		}
-
-		if (!network->IsServerAddress(clientAddr)) {
-			logger->Log(LogLevel::DEBUG, "Received data from unknown address");
-			continue;
-		}
-
-		size_t size = networkPacket->Size();
-		//logger->Log(LogLevel::DEBUG, "Received {} bytes from {}", size, address);
-		if (size < NetworkPacket::PAYLOAD_START_INDEX) {
-			logger->Log(LogLevel::WARNING, "Received too small packet: {}", size);
-			continue;
-		}
-		if (networkPacket->Validate()) {
-			logger->Log(LogLevel::WARNING, "Invalid packet");
-			continue;
-		}
-		switch (networkPacket->GetNetworkPacketType()) {
-		case NetworkPacketType::GAME_STATE:
-			logger->Log(LogLevel::DEBUG, "Game state packet received");
-			break;
-		case NetworkPacketType::DISCONNECT:
-			logger->Log(LogLevel::DEBUG, "Disconnect packet received");
-			isRunning = false;
-			break;
-		default:
-			logger->Log(LogLevel::WARNING, "Unknown packet type");
-			break;
-		}
+	if (g_client->ExecuteGame() != 0)
+	{
+		g_logger->Log(LogLevel::EXCEPTION, "Server stopped unexpectedly");
+		return 1;
 	}
 
-	std::cout << "Rocket Console finished." << std::endl;
+	g_client->QuitGame();
+
+#if _DEBUG
+	g_logger->Log(LogLevel::DEBUG, "Press any key to exit...");
+	std::cin.get();
+#endif
+
 	return 0;
 }

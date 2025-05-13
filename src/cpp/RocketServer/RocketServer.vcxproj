@@ -135,7 +135,7 @@
     <ClCompile Include="CRC32.cpp" />
     <ClCompile Include="GamePacket.cpp" />
     <ClCompile Include="Logger.cpp" />
-    <ClCompile Include="Network.cpp" />
+    <ClCompile Include="ServerNetwork.cpp" />
     <ClCompile Include="NetworkPacket.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Server.cpp" />
@@ -146,7 +146,7 @@
     <ClInclude Include="GamePacket.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="LogLevel.h" />
-    <ClInclude Include="Network.h" />
+    <ClInclude Include="ServerNetwork.h" />
     <ClInclude Include="NetworkConnectionState.h" />
     <ClInclude Include="NetworkPacket.h" />
     <ClInclude Include="NetworkPacketType.h" />

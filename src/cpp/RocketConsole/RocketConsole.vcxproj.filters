@@ -30,10 +30,13 @@
     <ClCompile Include="..\RocketServer\NetworkPacket.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RocketServer\Network.cpp">
+    <ClCompile Include="..\RocketServer\Utils.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\RocketServer\Utils.cpp">
+    <ClCompile Include="Client.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="ClientNetwork.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -56,10 +59,13 @@
     <ClInclude Include="..\RocketServer\CRC32.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\RocketServer\Network.h">
+    <ClInclude Include="..\RocketServer\Utils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="..\RocketServer\Utils.h">
+    <ClInclude Include="Client.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ClientNetwork.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
