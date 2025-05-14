@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include "Player.h"
 #include "Logger.h"
-#include "ServerNetwork.h"
+#include "ServerNetworkBase.h"
 
 class Server
 {
@@ -13,12 +13,12 @@ private:
 	bool m_running = true;
 
 	std::shared_ptr<Logger> m_logger;
-	std::unique_ptr<ServerNetwork> m_network;
+	std::unique_ptr<ServerNetworkBase> m_network;
 
 	std::vector<Player> m_players;
 
 public:
-	Server(std::shared_ptr<Logger> logger, std::unique_ptr<ServerNetwork> network);
+	Server(std::shared_ptr<Logger> logger, std::unique_ptr<ServerNetworkBase> network);
 	~Server();
 
 	int Initialize(int port);

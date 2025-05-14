@@ -2,20 +2,20 @@
 #include "NetworkPacketType.h"
 #include "Utils.h"
 
-std::string addrToString(const sockaddr_in& addr) {
+static std::string addrToString(const sockaddr_in& addr) {
 	char buf[INET_ADDRSTRLEN];
 	inet_ntop(AF_INET, &addr.sin_addr, buf, sizeof(buf));
 	return std::string(buf) + ":" + std::to_string(ntohs(addr.sin_port));
 }
 
-bool operator==(const sockaddr_in& a, const sockaddr_in& b) {
+static bool operator==(const sockaddr_in& a, const sockaddr_in& b) {
 	return a.sin_family == b.sin_family &&
 		a.sin_addr.s_addr == b.sin_addr.s_addr &&
 		a.sin_port == b.sin_port;
 }
 
 
-Server::Server(std::shared_ptr<Logger> logger, std::unique_ptr<ServerNetwork> network)
+Server::Server(std::shared_ptr<Logger> logger, std::unique_ptr<ServerNetworkBase> network)
 	: m_logger(logger), m_network(std::move(network)) {
 }
 

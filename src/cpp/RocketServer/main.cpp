@@ -21,7 +21,7 @@ std::shared_ptr<Logger> g_logger;
 std::unique_ptr<Server> g_server;
 
 // Signal handler for Ctrl+C
-void SignalHandler(int signal)
+static void SignalHandler(int signal)
 {
 	if (signal == SIGINT || signal == SIGTERM)
 	{

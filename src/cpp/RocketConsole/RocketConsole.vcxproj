@@ -70,6 +70,13 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <LibraryPath>$(SolutionDir)\src\cpp\RocketServer\$(Platform)\$(Configuration)\;$(LibraryPath)</LibraryPath>
+    <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -82,6 +89,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>CRC32;GamePacket;Logger;NetworkPacket;Utils;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -100,6 +108,7 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>CRC32;GamePacket;Logger;NetworkPacket;Utils;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -114,6 +123,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>CRC32;GamePacket;Logger;NetworkPacket;Utils;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -132,28 +142,22 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>CRC32;GamePacket;Logger;NetworkPacket;Utils;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\RocketServer\CRC32.cpp" />
-    <ClCompile Include="..\RocketServer\GamePacket.cpp" />
-    <ClCompile Include="..\RocketServer\Logger.cpp" />
-    <ClCompile Include="..\RocketServer\NetworkPacket.cpp" />
-    <ClCompile Include="..\RocketServer\Utils.cpp" />
     <ClCompile Include="Client.cpp" />
     <ClCompile Include="ClientNetwork.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\RocketServer\CRC32.h" />
-    <ClInclude Include="..\RocketServer\GamePacket.h" />
-    <ClInclude Include="..\RocketServer\Logger.h" />
-    <ClInclude Include="..\RocketServer\LogLevel.h" />
-    <ClInclude Include="..\RocketServer\NetworkPacket.h" />
-    <ClInclude Include="..\RocketServer\NetworkPacketType.h" />
-    <ClInclude Include="..\RocketServer\Utils.h" />
     <ClInclude Include="Client.h" />
     <ClInclude Include="ClientNetwork.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\RocketServer\RocketServer.vcxproj">
+      <Project>{c27f25de-2ae1-4c8b-a853-239e799af090}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

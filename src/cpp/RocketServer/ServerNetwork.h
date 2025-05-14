@@ -1,11 +1,10 @@
 #pragma once
 #include <string>
 #include <iostream>
-#include "NetworkPacket.h"
+#include "ServerNetworkBase.h"
 #include "Logger.h"
-#include "NetworkConnectionState.h"
 
-class ServerNetwork
+class ServerNetwork : public ServerNetworkBase
 {
 private:
 	SOCKET m_socket{};
@@ -15,8 +14,7 @@ private:
 public:
 	ServerNetwork(std::shared_ptr<Logger> logger);
 	~ServerNetwork();
-	int Initialize(std::string server, int port);
-	bool IsServerAddress(sockaddr_in& clientAddr);
-	int Send(NetworkPacket& networkPacket, sockaddr_in& clientAddr);
-	std::unique_ptr<NetworkPacket> Receive(sockaddr_in& clientAddr, int& result);
+	int Initialize(std::string server, int port) override;
+	int Send(NetworkPacket& networkPacket, sockaddr_in& clientAddr) override;
+	std::unique_ptr<NetworkPacket> Receive(sockaddr_in& clientAddr, int& result) override;
 };

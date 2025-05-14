@@ -4,7 +4,7 @@
 #include <cstdint>
 #include "Utils.h"
 
-std::string GetWSAErrorMessage(int errorCode)
+static std::string GetWSAErrorMessage(int errorCode)
 {
 	char* msgBuf = nullptr;
 	DWORD size = FormatMessageA(

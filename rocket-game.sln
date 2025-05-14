@@ -29,7 +29,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Rocket", "src\cpp\Rocket\Ro
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RocketConsole", "src\cpp\RocketConsole\RocketConsole.vcxproj", "{6E0D1E19-3C3A-4615-964C-CF2C243AEAAD}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RocketTests", "test\RocketTests\RocketTests.vcxproj", "{77B92DF7-9564-3DE8-72CD-960459D1F950}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RocketServerTests", "test\RocketServerTests\RocketServerTests.vcxproj", "{77B92DF7-9564-3DE8-72CD-960459D1F950}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
