@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="RocketServer">
+      <UniqueIdentifier>{03490e3e-ea12-446f-aa3e-c638078820fe}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="ServerTests.cpp">
@@ -24,9 +27,39 @@
     <ClCompile Include="ServerNetworkStub.h">
       <Filter>Header Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\cpp\RocketServer\NetworkPacket.cpp">
+      <Filter>RocketServer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cpp\RocketServer\Server.cpp">
+      <Filter>RocketServer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cpp\RocketServer\CRC32.cpp">
+      <Filter>RocketServer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cpp\RocketServer\GamePacket.cpp">
+      <Filter>RocketServer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cpp\RocketServer\Logger.cpp">
+      <Filter>RocketServer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cpp\RocketServer\main.cpp">
+      <Filter>RocketServer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cpp\RocketServer\ServerNetwork.cpp">
+      <Filter>RocketServer</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cpp\RocketServer\Utils.cpp">
+      <Filter>RocketServer</Filter>
+    </ClCompile>
+    <ClCompile Include="NetworkPacketTest.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NetworkPacketStub.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

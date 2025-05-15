@@ -141,10 +141,10 @@
     <ClCompile Include="CRC32.cpp" />
     <ClCompile Include="GamePacket.cpp" />
     <ClCompile Include="Logger.cpp" />
-    <ClCompile Include="ServerNetwork.cpp" />
     <ClCompile Include="NetworkPacket.cpp" />
-    <ClCompile Include="main.cpp" />
     <ClCompile Include="Server.cpp" />
+    <ClCompile Include="ServerNetwork.cpp" />
+    <ClCompile Include="main.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>

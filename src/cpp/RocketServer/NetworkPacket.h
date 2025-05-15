@@ -21,15 +21,14 @@ protected:
 
     std::vector<uint8_t> m_buffer;
     CRC32 m_crc;
+    size_t m_offset;
 
 public:
-    static constexpr uint8_t PAYLOAD_START_INDEX = CRC32::CRC_SIZE + 2 /* protocol magic number and packet type */;
-
     NetworkPacket();
     NetworkPacket(std::vector<uint8_t>& data);
     virtual std::vector<uint8_t> ToBytes();
     virtual NetworkPacket FromBytes(const std::vector<uint8_t>& data);
-    int Validate();
+    virtual int Validate();
 
     size_t Size();
     void Clear();
@@ -38,9 +37,9 @@ public:
     void WriteInt32(int32_t value);
     void WriteInt64(int64_t value);
     void WriteKeyboard(uint8_t up, uint8_t down, uint8_t left, uint8_t right, uint8_t firing);
-    int8_t ReadInt8(size_t& offset);
-    int32_t ReadInt32(size_t& offset);
-    float ReadInt32ToFloat(size_t& offset);
-    int64_t ReadInt64(size_t& offset);
     NetworkPacketType GetNetworkPacketType();
+    int8_t ReadInt8();
+    int32_t ReadInt32();
+    int64_t ReadInt64();
+    float ReadInt32ToFloat();
 };

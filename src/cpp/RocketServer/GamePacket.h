@@ -25,7 +25,7 @@ private:
     uint8_t IsFiring = 0;
 
 public:
-    std::vector<uint8_t> ToBytes();
+    std::vector<uint8_t> ToBytes() override;
     void ReadFromBytes(const std::vector<uint8_t>& data);
 };
 

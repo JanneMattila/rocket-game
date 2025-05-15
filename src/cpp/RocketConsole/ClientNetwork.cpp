@@ -4,7 +4,7 @@
 #include <cstdint>
 #include "Utils.h"
 
-std::string GetWSAErrorMessage(int errorCode)
+static std::string GetWSAErrorMessage(int errorCode)
 {
 	char* msgBuf = nullptr;
 	DWORD size = FormatMessageA(
@@ -89,7 +89,7 @@ int ClientNetwork::Initialize(std::string server, int port)
 	return 0;
 }
 
-bool ClientNetwork::IsServerAddress(sockaddr_in& clientAddr)
+bool ClientNetwork::IsServerAddress(sockaddr_in& clientAddr) const
 {
 	return (m_servaddr.sin_family == clientAddr.sin_family &&
 		m_servaddr.sin_addr.s_addr == clientAddr.sin_addr.s_addr &&
@@ -106,7 +106,7 @@ int ClientNetwork::EstablishConnection()
 	networkPacket->WriteInt64(clientSalt);
 
 	// Pad the packet to 1000 bytes
-	for (size_t i = 0; i < 1000 - NetworkPacket::PAYLOAD_START_INDEX - sizeof(uint64_t); i++)
+	for (size_t i = 0; i < 1000 - sizeof(uint32_t) - sizeof(uint64_t); i++)
 	{
 		networkPacket->WriteInt8(0);
 	}
@@ -146,8 +146,7 @@ int ClientNetwork::EstablishConnection()
 		return 1;
 	}
 
-	size_t offset = NetworkPacket::PAYLOAD_START_INDEX;
-	uint64_t receivedClientSalt = networkPacket->ReadInt64(offset);
+	uint64_t receivedClientSalt = networkPacket->ReadInt64();
 	if (receivedClientSalt != clientSalt)
 	{
 		m_connectionState = NetworkConnectionState::DISCONNECTED;
@@ -156,7 +155,7 @@ int ClientNetwork::EstablishConnection()
 	}
 
 	// Extract server salt from the response
-	uint64_t serverSalt = networkPacket->ReadInt64(offset);
+	uint64_t serverSalt = networkPacket->ReadInt64();
 	m_connectionSalt = clientSalt ^ serverSalt;
 
 	networkPacket->Clear();
@@ -165,7 +164,7 @@ int ClientNetwork::EstablishConnection()
 	networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CHALLENGE_RESPONSE));
 	networkPacket->WriteInt64(m_connectionSalt);
 	// Pad the packet to 1000 bytes
-	for (size_t i = 0; i < 1000 - NetworkPacket::PAYLOAD_START_INDEX - sizeof(uint64_t); i++)
+	for (size_t i = 0; i < 1000 - sizeof(uint32_t) - sizeof(uint64_t); i++)
 	{
 		networkPacket->WriteInt8(0);
 	}

@@ -35,16 +35,15 @@ void GamePacket::ReadFromBytes(const std::vector<uint8_t>& data) {
     uint32_t calc_crc = m_crc.value();
     if (received_crc != calc_crc)
         throw std::runtime_error("CRC32 mismatch");
-    size_t offset = CRC32::CRC_SIZE;
-    this->Ticks = ReadInt64(offset);
-    this->PositionX = ReadInt32ToFloat(offset);
-    this->PositionY = ReadInt32ToFloat(offset);
-    this->VelocityX = ReadInt32ToFloat(offset);
-    this->VelocityY = ReadInt32ToFloat(offset);
-    this->Rotation = ReadInt32ToFloat(offset);
-    this->Speed = ReadInt32ToFloat(offset);
-    this->Delta = ReadInt32ToFloat(offset);
-    uint8_t k = data[offset++];
+    this->Ticks = ReadInt64();
+    this->PositionX = ReadInt32ToFloat();
+    this->PositionY = ReadInt32ToFloat();
+    this->VelocityX = ReadInt32ToFloat();
+    this->VelocityY = ReadInt32ToFloat();
+    this->Rotation = ReadInt32ToFloat();
+    this->Speed = ReadInt32ToFloat();
+    this->Delta = ReadInt32ToFloat();
+    uint8_t k = ReadInt8();
     this->IsUp = (k >> 5) & 1;
     this->IsDown = (k >> 4) & 1;
     this->IsLeft = (k >> 3) & 1;

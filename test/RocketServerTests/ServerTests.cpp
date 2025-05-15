@@ -4,10 +4,30 @@
 #include "Server.h"
 #include "ServerNetworkStub.h"
 #include "NetworkPacketType.h"
+#include "Utils.h"
 #include <thread>
 #include <future>
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
+
+// Specialization of ToString for NetworkPacketType
+namespace Microsoft {
+    namespace VisualStudio {
+        namespace CppUnitTestFramework {
+            template<>
+            static std::wstring ToString<NetworkPacketType>(const NetworkPacketType& packetType) {
+                switch (packetType) {
+				case NetworkPacketType::CONNECTION_REQUEST: return L"CONNECTION_REQUEST";
+				case NetworkPacketType::CHALLENGE_RESPONSE: return L"CHALLENGE_RESPONSE";
+				case NetworkPacketType::CONNECTION_ACCEPTED: return L"CONNECTION_ACCEPTED";
+				case NetworkPacketType::CONNECTION_DENIED: return L"CONNECTION_DENIED";
+				case NetworkPacketType::CHALLENGE: return L"CHALLENGE";
+                default: return L"Unknown NetworkPacketType";
+                }
+            }
+        }
+    }
+}
 
 namespace RocketServerTests
 {
@@ -165,7 +185,7 @@ namespace RocketServerTests
             resultPromise.get_future().wait();
 
             // Verify that the server sent a challenge packet
-            Assert::AreEqual(static_cast<int8_t>(NetworkPacketType::CHALLENGE),
+            Assert::AreEqual(NetworkPacketType::CHALLENGE,
                 sentPacket.GetNetworkPacketType(),
                 L"Server should respond with CHALLENGE packet");
         }
@@ -191,10 +211,6 @@ namespace RocketServerTests
             auto requestPacket = CreateConnectionRequestPacket(CLIENT_SALT);
             auto challengeResponsePacket = CreateChallengeResponsePacket(COMBINED_SALT);
 
-            // Make server generate a fixed server salt for testing
-            auto originalGetRandom = Utils::GetRandomNumber64;
-            Utils::GetRandomNumber64 = []() { return 0xFEDCBA0987654321; };
-
             // Set up network to return packets in sequence
             network->ReceiveReturnValues = { 0, 0, -1 }; // Success, success, then waiting
             network->ReceiveDataReturnValues = { requestPacket, challengeResponsePacket };
@@ -212,8 +228,7 @@ namespace RocketServerTests
 
                 // If it's CONNECTION_ACCEPTED, save the player ID too
                 if (packet.GetNetworkPacketType() == NetworkPacketType::CONNECTION_ACCEPTED) {
-                    size_t offset = NetworkPacket::PAYLOAD_START_INDEX;
-                    copy.WriteInt64(packet.ReadInt64(offset));
+                    copy.WriteInt64(packet.ReadInt64());
                 }
 
                 sentPackets.push_back(copy);
@@ -229,15 +244,12 @@ namespace RocketServerTests
             RunServerForTestsAsync(server.get(), 200, resultPromise);
             resultPromise.get_future().wait();
 
-            // Restore the random function
-            Utils::GetRandomNumber64 = originalGetRandom;
-
             // Verify the server sent CHALLENGE and CONNECTION_ACCEPTED packets
-            Assert::AreEqual(2u, sentPackets.size(), L"Server should have sent 2 packets");
-            Assert::AreEqual(static_cast<int8_t>(NetworkPacketType::CHALLENGE),
+            Assert::AreEqual((size_t)2, sentPackets.size(), L"Server should have sent 2 packets");
+            Assert::AreEqual(NetworkPacketType::CHALLENGE,
                 sentPackets[0].GetNetworkPacketType(),
                 L"First response should be CHALLENGE");
-            Assert::AreEqual(static_cast<int8_t>(NetworkPacketType::CONNECTION_ACCEPTED),
+            Assert::AreEqual(NetworkPacketType::CONNECTION_ACCEPTED,
                 sentPackets[1].GetNetworkPacketType(),
                 L"Second response should be CONNECTION_ACCEPTED");
         }
@@ -263,10 +275,6 @@ namespace RocketServerTests
             auto requestPacket = CreateConnectionRequestPacket(CLIENT_SALT);
             auto challengeResponsePacket = CreateChallengeResponsePacket(INCORRECT_SALT);
 
-            // Make server generate a fixed server salt for testing
-            auto originalGetRandom = Utils::GetRandomNumber64;
-            Utils::GetRandomNumber64 = []() { return 0xFEDCBA0987654321; };
-
             // Set up network to return packets in sequence
             network->ReceiveReturnValues = { 0, 0, -1 }; // Success, success, then waiting
             network->ReceiveDataReturnValues = { requestPacket, challengeResponsePacket };
@@ -292,15 +300,12 @@ namespace RocketServerTests
             RunServerForTestsAsync(server.get(), 200, resultPromise);
             resultPromise.get_future().wait();
 
-            // Restore the random function
-            Utils::GetRandomNumber64 = originalGetRandom;
-
             // Verify the server sent CHALLENGE and CONNECTION_DENIED packets
-            Assert::AreEqual(2u, sentPackets.size(), L"Server should have sent 2 packets");
-            Assert::AreEqual(static_cast<int8_t>(NetworkPacketType::CHALLENGE),
+            Assert::AreEqual((size_t)2, sentPackets.size(), L"Server should have sent 2 packets");
+            Assert::AreEqual(NetworkPacketType::CHALLENGE,
                 sentPackets[0].GetNetworkPacketType(),
                 L"First response should be CHALLENGE");
-            Assert::AreEqual(static_cast<int8_t>(NetworkPacketType::CONNECTION_DENIED),
+            Assert::AreEqual(NetworkPacketType::CONNECTION_DENIED,
                 sentPackets[1].GetNetworkPacketType(),
                 L"Second response should be CONNECTION_DENIED");
         }
@@ -438,16 +443,6 @@ namespace RocketServerTests
             clientAddr2.sin_port = htons(54322); // Different port
             inet_pton(AF_INET, "127.0.0.1", &clientAddr2.sin_addr);
 
-            // Make server generate fixed server salts for testing
-            auto originalGetRandom = Utils::GetRandomNumber64;
-            int saltCounter = 0;
-            Utils::GetRandomNumber64 = [&saltCounter]() {
-                if (saltCounter++ == 0)
-                    return 0xAAAAAAAAAAAAAA;
-                else
-                    return 0xBBBBBBBBBBBBB;
-                };
-
             // Set up network to simulate two connection requests from different clients
             network->ReceiveReturnValues = { 0, 0, -1 }; // Success, success, then waiting
             network->ReceiveDataReturnValues = { requestPacket1, requestPacket2 };
@@ -474,15 +469,12 @@ namespace RocketServerTests
             RunServerForTestsAsync(server.get(), 200, resultPromise);
             resultPromise.get_future().wait();
 
-            // Restore the random function
-            Utils::GetRandomNumber64 = originalGetRandom;
-
             // Verify the server sent responses to both clients
-            Assert::AreEqual(2u, sentPackets.size(), L"Server should have sent responses to both clients");
-            Assert::AreEqual(static_cast<int8_t>(NetworkPacketType::CHALLENGE),
+            Assert::AreEqual((size_t)2u, sentPackets.size(), L"Server should have sent responses to both clients");
+            Assert::AreEqual(NetworkPacketType::CHALLENGE,
                 sentPackets[0].GetNetworkPacketType(),
                 L"Response to first client should be CHALLENGE");
-            Assert::AreEqual(static_cast<int8_t>(NetworkPacketType::CHALLENGE),
+            Assert::AreEqual(NetworkPacketType::CHALLENGE,
                 sentPackets[1].GetNetworkPacketType(),
                 L"Response to second client should be CHALLENGE");
 

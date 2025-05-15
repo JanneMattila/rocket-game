@@ -3,6 +3,7 @@
 #include <cstdint>
 
 enum class NetworkPacketType : int8_t {
+    UNKNOWN = 0,
     CONNECTION_REQUEST = 1,
     CONNECTION_DENIED = 2,
     CHALLENGE = 3,

@@ -52,7 +52,7 @@ int Server::ExecuteGame()
 
 		m_logger->Log(LogLevel::DEBUG, "Received {} bytes from {}", size, address);
 
-		if (size < NetworkPacket::PAYLOAD_START_INDEX)
+		if (size < CRC32::CRC_SIZE)
 		{
 			m_logger->Log(LogLevel::WARNING, "Received too small packet: {}", size);
 			continue;
@@ -150,10 +150,9 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 		playerID = 1;
 	}
 
-	size_t offset = NetworkPacket::PAYLOAD_START_INDEX;
 	Player player;
 	player.ConnectionState = NetworkConnectionState::CONNECTING;
-	player.ClientSalt = networkPacket->ReadInt64(offset);
+	player.ClientSalt = networkPacket->ReadInt64();
 	player.ServerSalt = Utils::GetRandomNumber64();
 	player.Salt = player.ClientSalt ^ player.ServerSalt;
 	player.PlayerID = playerID;
@@ -179,8 +178,7 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 
 int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr)
 {
-	size_t offset = NetworkPacket::PAYLOAD_START_INDEX;
-	int64_t salt = networkPacket->ReadInt64(offset);
+	int64_t salt = networkPacket->ReadInt64();
 
 	for (Player& player : m_players)
 	{

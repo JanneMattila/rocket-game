@@ -19,7 +19,7 @@ public:
 	~ClientNetwork();
 	int Initialize(std::string server, int port);
 	int EstablishConnection();
-	bool IsServerAddress(sockaddr_in& clientAddr);
+	bool IsServerAddress(sockaddr_in& clientAddr) const;
 	int Send(NetworkPacket& networkPacket);
 	std::unique_ptr<NetworkPacket> Receive(sockaddr_in& clientAddr, int& result);
 };
