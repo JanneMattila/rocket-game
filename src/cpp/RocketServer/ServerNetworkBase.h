@@ -8,7 +8,7 @@ class ServerNetworkBase
 {
 private:
 public:
-	virtual int Initialize(std::string server, int port) = 0;
+	virtual int Initialize(int port) = 0;
 	virtual int Send(NetworkPacket& networkPacket, sockaddr_in& clientAddr) = 0;
 	virtual std::unique_ptr<NetworkPacket> Receive(sockaddr_in& clientAddr, int& result) = 0;
 };

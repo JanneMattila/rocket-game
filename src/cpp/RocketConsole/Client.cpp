@@ -32,11 +32,12 @@ int Client::EstablishConnection()
 	return m_network->EstablishConnection();
 }
 
-int Client::ExecuteGame()
+int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 {
 	// Main loop
 	int8_t index = 0;
-	while (m_running) {
+	while (running)
+	{
 		sockaddr_in serverAddr{};
 		int result = 0;
 
@@ -84,7 +85,7 @@ int Client::ExecuteGame()
 				break;
 			case NetworkPacketType::DISCONNECT:
 				m_logger->Log(LogLevel::DEBUG, "Disconnect packet received");
-				m_running = false;
+				running = false;
 				break;
 			default:
 				m_logger->Log(LogLevel::WARNING, "Unknown packet type");
@@ -95,13 +96,8 @@ int Client::ExecuteGame()
 	return 0;
 }
 
-int Client::PrepareToQuitGame()
-{
-	m_running = false;
-	return 0;
-}
-
 int Client::QuitGame()
 {
+	m_logger->Log(LogLevel::DEBUG, "Game is stopping");
 	return 0;
 }

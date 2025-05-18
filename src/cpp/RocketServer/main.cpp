@@ -20,16 +20,15 @@
 std::shared_ptr<Logger> g_logger;
 std::unique_ptr<Server> g_server;
 
+volatile std::sig_atomic_t g_running = 1;
+
 // Signal handler for Ctrl+C
 static void SignalHandler(int signal)
 {
 	if (signal == SIGINT || signal == SIGTERM)
 	{
-		g_logger->Log(LogLevel::INFO, "Signal detected ({}). Starting to close the game.", signal);
-		if (g_server)
-		{
-			g_server->PrepareToQuitGame();
-		}
+		g_logger->Log(LogLevel::INFO, "Server shutdown requested (signal {})", signal);
+		g_running = 0;
 	}
 }
 
@@ -62,7 +61,7 @@ int main()
 		return 1;
 	}
 
-	if (g_server->ExecuteGame() != 0)
+	if (g_server->ExecuteGame(g_running) != 0)
 	{
 		g_logger->Log(LogLevel::EXCEPTION, "Server stopped unexpectedly");
 		return 1;

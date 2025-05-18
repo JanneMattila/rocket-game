@@ -1,8 +1,14 @@
 #pragma once
 #include <string>
 #include <iostream>
+#include <memory>
 #include "ServerNetworkBase.h"
 #include "Logger.h"
+
+#ifdef _WIN32
+#else
+typedef int SOCKET;
+#endif
 
 class ServerNetwork : public ServerNetworkBase
 {
@@ -14,7 +20,7 @@ private:
 public:
 	ServerNetwork(std::shared_ptr<Logger> logger);
 	~ServerNetwork();
-	int Initialize(std::string server, int port) override;
+	int Initialize(int port) override;
 	int Send(NetworkPacket& networkPacket, sockaddr_in& clientAddr) override;
 	std::unique_ptr<NetworkPacket> Receive(sockaddr_in& clientAddr, int& result) override;
 };

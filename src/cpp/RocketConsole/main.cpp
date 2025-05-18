@@ -6,7 +6,7 @@
 #include "Client.h"
 #include <csignal>
 
-std::string GetEnvVariable(const char* varName) {
+static std::string GetEnvVariable(const char* varName) {
 	std::string result;
 
 #ifdef _WIN32
@@ -30,16 +30,14 @@ std::string GetEnvVariable(const char* varName) {
 std::shared_ptr<Logger> g_logger;
 std::unique_ptr<Client> g_client;
 
+volatile std::sig_atomic_t g_running = 1;
+
 // Signal handler for Ctrl+C
-void SignalHandler(int signal)
+static void SignalHandler(int signal)
 {
 	if (signal == SIGINT || signal == SIGTERM)
 	{
-		g_logger->Log(LogLevel::INFO, "Signal detected ({}). Starting to close the game.", signal);
-		if (g_client)
-		{
-			g_client->PrepareToQuitGame();
-		}
+		g_running = 0;
 	}
 }
 
@@ -98,9 +96,9 @@ int main(int argc, char** argv)
 
 	g_logger->Log(LogLevel::INFO, "Connection established");
 
-	if (g_client->ExecuteGame() != 0)
+	if (g_client->ExecuteGame(g_running) != 0)
 	{
-		g_logger->Log(LogLevel::EXCEPTION, "Server stopped unexpectedly");
+		g_logger->Log(LogLevel::EXCEPTION, "Game stopped unexpectedly");
 		return 1;
 	}
 

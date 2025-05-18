@@ -40,7 +40,7 @@ private:
     std::string GetTimestamp();
     std::string LogLevelToString(LogLevel level);
 
-    LogLevel m_logLevel;
+    LogLevel m_logLevel = LogLevel::DEBUG;
     std::ofstream m_logFile;
     bool m_fileLoggingEnabled;
     std::mutex m_mutex;

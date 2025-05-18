@@ -1,11 +1,13 @@
-#include "NetworkPacket.h"
 #include <cstring>
 #ifdef _WIN32
 #include <winsock2.h>
 #else
 #include <arpa/inet.h>
+#include <endian.h>
+#define ntohll(x) be64toh(x)
+#define htonll(x) htobe64(x)
 #endif
-#include "NetworkPacketType.h"
+#include "NetworkPacket.h"
 
 NetworkPacket::NetworkPacket()
 	: m_offset(0)

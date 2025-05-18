@@ -56,7 +56,7 @@ int ClientNetwork::Initialize(std::string server, int port)
 
 	m_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (m_socket == INVALID_SOCKET) {
-		auto errorCode = WSAGetLastError();
+		auto errorCode = GetLastError();
 		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Socket creation failed with error: {}", errorCode);
 		return 1;
 	}
@@ -65,7 +65,7 @@ int ClientNetwork::Initialize(std::string server, int port)
 #ifdef _WIN32
 	int timeoutMs = 5000; // 1 seconds
 	if (setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeoutMs, sizeof(timeoutMs)) < 0) {
-		auto errorCode = WSAGetLastError();
+		auto errorCode = GetLastError();
 		std::string errorMsg = GetWSAErrorMessage(errorCode);
 		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to set socket timeout: {}: {}", errorCode, errorMsg);
 		return 1;
@@ -217,12 +217,12 @@ std::unique_ptr<NetworkPacket> ClientNetwork::Receive(sockaddr_in& clientAddr, i
 		reinterpret_cast<char*>(data.data()),
 		(int)data.size(),
 		0,
-		reinterpret_cast<SOCKADDR*>(&clientAddr),
+		reinterpret_cast<sockaddr*>(&clientAddr),
 		&addrLen);
 
 	if (n == SOCKET_ERROR)
 	{
-		auto errorCode = WSAGetLastError();
+		auto errorCode = GetLastError();
 		if (errorCode == WSAETIMEDOUT)
 		{
 			// Timeout, no data received
@@ -283,9 +283,9 @@ int ClientNetwork::Send(NetworkPacket& networkPacket)
 	m_logger->Log(LogLevel::DEBUG, "Send: Sending {} bytes: {}", size, bufferString);
 #endif
 
-	if (sendto(m_socket, (char*)data.data(), (int)size, 0, (SOCKADDR*)&m_servaddr, sizeof(m_servaddr)) == SOCKET_ERROR)
+	if (sendto(m_socket, (char*)data.data(), (int)size, 0, (sockaddr*)&m_servaddr, sizeof(m_servaddr)) == SOCKET_ERROR)
 	{
-		auto errorCode = WSAGetLastError();
+		auto errorCode = GetLastError();
 		std::string errorMsg = GetWSAErrorMessage(errorCode);
 		m_logger->Log(LogLevel::EXCEPTION, "Send: Failed with error: {}: {}", errorCode, errorMsg);
 		return 1;

@@ -4,14 +4,13 @@
 
 using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
-
 namespace RocketServerTests
 {
     TEST_CLASS(NetworkPacketTests)
     {
     private:
     public:
-        TEST_METHOD(Validation_Fails_Test)
+        TEST_METHOD(Validation_Failed_Test)
         {
             // Arrange
             std::vector<uint8_t> data = { 1, 2, 3, 4, 10, 20, 30 };
@@ -22,10 +21,10 @@ namespace RocketServerTests
             int actual = networkPacket.Validate();
 
             // Assert
-            Assert::AreEqual(expected, actual, L"Validation should faile");
+            Assert::AreEqual(expected, actual, L"Validation should have failed");
         }
 
-        TEST_METHOD(Validation_Succeed_Test)
+        TEST_METHOD(Validation_Succeeded_Test)
         {
             // Arrange
             std::vector<uint8_t> data = { 158, 203, 209, 104, 10, 20, 30 };
@@ -36,7 +35,7 @@ namespace RocketServerTests
             int actual = networkPacket.Validate();
 
             // Assert
-            Assert::AreEqual(expected, actual, L"Validation should succeed");
+            Assert::AreEqual(expected, actual, L"Validation should have succeeded");
         }
     };
 }

@@ -189,7 +189,6 @@
     <ClCompile Include="ServerTests.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="NetworkPacketStub.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>

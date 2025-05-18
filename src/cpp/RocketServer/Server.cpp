@@ -15,8 +15,8 @@ static bool operator==(const sockaddr_in& a, const sockaddr_in& b) {
 }
 
 
-Server::Server(std::shared_ptr<Logger> logger, std::unique_ptr<ServerNetworkBase> network)
-	: m_logger(logger), m_network(std::move(network)) {
+Server::Server(std::shared_ptr<Logger> logger, std::shared_ptr<ServerNetworkBase> network)
+	: m_logger(logger), m_network(network) {
 }
 
 Server::~Server() {
@@ -24,17 +24,18 @@ Server::~Server() {
 
 int Server::Initialize(int port)
 {
-	return m_network->Initialize("" /* This is server */, port);
+	return m_network->Initialize(port);
 }
 
-int Server::ExecuteGame()
+int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 {
-	while (m_running)
+	while (running)
 	{
 		sockaddr_in clientAddr{};
-
 		int result = 0;
+
 		std::unique_ptr<NetworkPacket> networkPacket = m_network->Receive(clientAddr, result);
+
 		if (result == -1)
 		{
 			m_logger->Log(LogLevel::DEBUG, "Waiting for data");
@@ -175,7 +176,6 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 	return 0;
 }
 
-
 int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr)
 {
 	int64_t salt = networkPacket->ReadInt64();
@@ -231,13 +231,8 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 	return 1;
 }
 
-int Server::PrepareToQuitGame()
-{
-	m_running = false;
-	return 0;
-}
-
 int Server::QuitGame()
 {
+	m_logger->Log(LogLevel::DEBUG, "Server is stopping");
 	return 0;
 }

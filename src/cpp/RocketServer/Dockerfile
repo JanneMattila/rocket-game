@@ -9,7 +9,8 @@ RUN cmake -S . -B build && \
     cmake --build build --config Release
 
 # Runtime stage
-FROM mcr.microsoft.com/azurelinux/distroless/minimal:3.0
+# https://mcr.microsoft.com/en-us/artifact/mar/azurelinux/distroless/minimal
+FROM mcr.microsoft.com/azurelinux/distroless/minimal:3.0 AS runtime
 WORKDIR /app
 COPY --from=build /src/build/RocketServer .
 ENTRYPOINT ["/app/RocketServer"]
