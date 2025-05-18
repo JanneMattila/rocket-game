@@ -6,7 +6,7 @@
 #include "Logger.h"
 #include "NetworkConnectionState.h"
 
-#if PLATFORM == PLATFORM_WINDOWS
+#ifdef _WIN32
 #else
 typedef int SOCKET;
 #endif

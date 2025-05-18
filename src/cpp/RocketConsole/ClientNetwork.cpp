@@ -3,9 +3,8 @@
 #include "ClientNetwork.h"
 #include "NetworkPacketType.h"
 #include "Utils.h"
-#include "Platform.h"
 
-#if PLATFORM == PLATFORM_WINDOWS
+#ifdef _WIN32
 #define SOCKET_TIMEOUT ETIMEDOUT
 #else
 #include <unistd.h>
@@ -20,7 +19,7 @@
 #endif
 
 // Platform specific methods
-#if PLATFORM == PLATFORM_WINDOWS
+#ifdef _WIN32
 static inline int GetNetworkLastError()
 {
 	return WSAGetLastError();
@@ -66,7 +65,7 @@ ClientNetwork::ClientNetwork(std::shared_ptr<Logger> logger) : m_logger(logger),
 ClientNetwork::~ClientNetwork()
 {
 	// Close the socket and cleanup
-#if PLATFORM == PLATFORM_WINDOWS
+#ifdef _WIN32
 	closesocket(m_socket);
 	WSACleanup();
 #else
@@ -76,7 +75,7 @@ ClientNetwork::~ClientNetwork()
 
 int ClientNetwork::Initialize(std::string server, int port)
 {
-#if PLATFORM == PLATFORM_WINDOWS
+#ifdef _WIN32
 	WSADATA wsaData;
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
 		m_logger->Log(LogLevel::EXCEPTION, "WSAStartup failed");
@@ -92,7 +91,7 @@ int ClientNetwork::Initialize(std::string server, int port)
 	}
 
 	// Set socket to non-blocking mode
-#if PLATFORM == PLATFORM_WINDOWS
+#ifdef _WIN32
 	u_long nonBlocking = 1;
 	if (ioctlsocket(m_socket, FIONBIO, &nonBlocking) != 0) {
 		auto errorCode = GetNetworkLastError();

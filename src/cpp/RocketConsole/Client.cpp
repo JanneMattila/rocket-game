@@ -106,6 +106,7 @@ int Client::QuitGame()
 		NetworkPacket sendNetworkPacket;
 		sendNetworkPacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::DISCONNECT));
 		sendNetworkPacket.WriteInt8(0);
+		sendNetworkPacket.WriteInt8(0);
 		m_network->Send(sendNetworkPacket);
 	}
 	return 0;

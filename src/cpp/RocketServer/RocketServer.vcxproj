@@ -148,7 +148,6 @@
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Platform.h" />
     <ClInclude Include="ServerNetworkBase.h" />
     <ClInclude Include="CRC32.h" />
     <ClInclude Include="GamePacket.h" />

@@ -37,6 +37,7 @@ static void SignalHandler(int signal)
 {
 	if (signal == SIGINT || signal == SIGTERM)
 	{
+		g_logger->Log(LogLevel::INFO, "Client shutdown requested (signal {})", signal);
 		g_running = 0;
 	}
 }
@@ -90,19 +91,24 @@ int main(int argc, char** argv)
 
 	while (g_client->EstablishConnection() != 0)
 	{
+		if (g_running == 0) break;
+
 		g_logger->Log(LogLevel::WARNING, "Failed to establish connection");
 		std::this_thread::sleep_for(std::chrono::seconds(3));
 	}
 
-	g_logger->Log(LogLevel::INFO, "Connection established");
-
-	if (g_client->ExecuteGame(g_running) != 0)
+	if (g_running)
 	{
-		g_logger->Log(LogLevel::EXCEPTION, "Game stopped unexpectedly");
-		return 1;
-	}
+		g_logger->Log(LogLevel::INFO, "Connection established");
 
-	g_client->QuitGame();
+		if (g_client->ExecuteGame(g_running) != 0)
+		{
+			g_logger->Log(LogLevel::EXCEPTION, "Game stopped unexpectedly");
+			return 1;
+		}
+
+		g_client->QuitGame();
+	}
 
 #if _DEBUG
 	g_logger->Log(LogLevel::DEBUG, "Press any key to exit...");

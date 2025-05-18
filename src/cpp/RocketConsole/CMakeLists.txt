@@ -19,6 +19,11 @@ set(SOURCES
     main.cpp
     Client.cpp
     ClientNetwork.cpp
+    ../RocketServer/Logger.cpp
+    ../RocketServer/Utils.cpp
+    ../RocketServer/CRC32.cpp
+    ../RocketServer/NetworkPacket.cpp
+    ../RocketServer/GamePacket.cpp
 )
 
 add_executable(RocketConsole ${SOURCES})
