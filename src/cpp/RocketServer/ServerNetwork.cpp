@@ -1,9 +1,15 @@
 #include <random>
 #include <cstdint>
-#ifdef _WIN32
+#include "ServerNetwork.h"
+#include "NetworkPacketType.h"
+#include "Utils.h"
+#include "Platform.h"
+
+#if PLATFORM == PLATFORM_WINDOWS
 #define SOCKET_TIMEOUT ETIMEDOUT
 #else
 #include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <cstring>
 #include <cerrno>
@@ -12,12 +18,9 @@
 #define SOCKET_TIMEOUT EAGAIN // 11
 #define INVALID_SOCKET  (SOCKET)(~0)
 #endif
-#include "ServerNetwork.h"
-#include "NetworkPacketType.h"
-#include "Utils.h"
 
 // Platform specific methods
-#ifdef _WIN32
+#if PLATFORM == PLATFORM_WINDOWS
 static inline int GetNetworkLastError()
 {
 	return WSAGetLastError();
@@ -63,7 +66,7 @@ ServerNetwork::ServerNetwork(std::shared_ptr<Logger> logger) : m_logger(logger),
 ServerNetwork::~ServerNetwork()
 {
 	// Close the socket and cleanup
-#ifdef _WIN32
+#if PLATFORM == PLATFORM_WINDOWS
 	closesocket(m_socket);
 	WSACleanup();
 #else
@@ -73,35 +76,41 @@ ServerNetwork::~ServerNetwork()
 
 int ServerNetwork::Initialize(int port)
 {
-#ifdef _WIN32
+#if PLATFORM == PLATFORM_WINDOWS
 	WSADATA wsaData;
-	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
+	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
+	{
 		m_logger->Log(LogLevel::EXCEPTION, "Initialize: WSAStartup failed");
 		return 1;
 	}
 #endif
 
 	m_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (m_socket == INVALID_SOCKET) {
+	if (m_socket == INVALID_SOCKET)
+	{
 		auto errorCode = GetNetworkLastError();
 		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Socket creation failed with error: {}", errorCode);
 		return 1;
 	}
 
-	// Set receive timeout
-#ifdef _WIN32
-	int timeoutMs = 5000; // 1 seconds
-	if (setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeoutMs, sizeof(timeoutMs)) < 0) {
+	// Set socket to non-blocking mode
+#if PLATFORM == PLATFORM_WINDOWS
+	u_long nonBlocking = 1;
+	if (ioctlsocket(m_socket, FIONBIO, &nonBlocking) != 0){
 		auto errorCode = GetNetworkLastError();
 		std::string errorMsg = GetNetworkErrorMessage(errorCode);
-		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to set socket timeout: {}: {}", errorCode, errorMsg);
+		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to set socket to non-blocking: {}: {}", errorCode, errorMsg);
 		return 1;
 	}
 #else
-	struct timeval timeout;
-	timeout.tv_sec = 5; // 5 seconds
-	timeout.tv_usec = 0; // 0 microseconds
-	setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+	int nonBlocking = 1;
+	if (fcntl(m_socket, F_SETFL, O_NONBLOCK, &nonBlocking) == -1)
+	{
+		auto errorCode = GetNetworkLastError();
+		std::string errorMsg = GetNetworkErrorMessage(errorCode);
+		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to set socket to non-blocking: {}: {}", errorCode, errorMsg);
+		return 1;
+	}
 #endif
 
 	m_servaddr.sin_family = AF_INET;
@@ -111,7 +120,7 @@ int ServerNetwork::Initialize(int port)
 	m_logger->Log(LogLevel::INFO, "Initialize: Binding on port: {}", port);
 	if (bind(m_socket, (sockaddr*)&m_servaddr, sizeof(m_servaddr)) < 0)
 	{
-		//m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to bind socket on port: {}", port);
+		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to bind socket on port: {}", port);
 		return 1;
 	}
 
@@ -136,22 +145,13 @@ std::unique_ptr<NetworkPacket> ServerNetwork::Receive(sockaddr_in& clientAddr, i
 
 	if (n == SOCKET_ERROR)
 	{
-		m_logger->Log(LogLevel::DEBUG, "DEBUG 4: After SOCKET_ERROR");
-
 		auto errorCode = GetNetworkLastError();
-
-		m_logger->Log(LogLevel::DEBUG, "DEBUG 4: After SOCKET_ERROR {}", errorCode);
-
 		if (errorCode == ETIMEDOUT)
 		{
-			m_logger->Log(LogLevel::DEBUG, "DEBUG 5: After ETIMEDOUT");
-
 			// Timeout, no data received
 			result = -1;
 			return nullptr;
 		}
-
-		m_logger->Log(LogLevel::DEBUG, "DEBUG 6: Before GetNetworkErrorMessage");
 
 		std::string errorMsg = GetNetworkErrorMessage(errorCode);
 		m_logger->Log(LogLevel::EXCEPTION, "Receive: Failed with error: {}: {}", errorCode, errorMsg);
@@ -164,8 +164,6 @@ std::unique_ptr<NetworkPacket> ServerNetwork::Receive(sockaddr_in& clientAddr, i
 		result = 1;
 		return nullptr;
 	}
-
-	m_logger->Log(LogLevel::DEBUG, "DEBUG 6: Before resize {}", n);
 
 	// Resize the vector to the actual number of bytes received
 	data.resize(n);
@@ -208,7 +206,7 @@ int ServerNetwork::Send(NetworkPacket& networkPacket, sockaddr_in& clientAddr)
 	m_logger->Log(LogLevel::DEBUG, "Send: Sending {} bytes: {}", size, bufferString);
 #endif
 
-	if (sendto(m_socket, (char*)data.data(), (int)size, 0, (sockaddr*)&clientAddr, sizeof(clientAddr)) == SOCKET_ERROR)
+	if (sendto(m_socket, (char*)data.data(), (int)size, 0, (sockaddr*)&clientAddr, sizeof(clientAddr)) != size)
 	{
 		auto errorCode = GetNetworkLastError();
 		std::string errorMsg = GetNetworkErrorMessage(errorCode);

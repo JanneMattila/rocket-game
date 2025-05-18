@@ -13,6 +13,7 @@ private:
 	std::unique_ptr<ClientNetwork> m_network;
 
 	std::vector<Player> m_players;
+	bool m_serverInitializedShutdown = false;
 
 public:
 	Client(std::shared_ptr<Logger> logger, std::unique_ptr<ClientNetwork> network);

@@ -11,5 +11,8 @@ enum class NetworkPacketType : int8_t {
 	CONNECTION_ACCEPTED = 5,
 	
     GAME_STATE = 10,
-	DISCONNECT = 20
+	DISCONNECT = 20,
+
+	PAUSE = 30,
+	RESUME = 31
 };

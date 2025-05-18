@@ -1,10 +1,31 @@
-#include "ClientNetwork.h"
-#include "NetworkPacketType.h"
 #include <random>
 #include <cstdint>
+#include "ClientNetwork.h"
+#include "NetworkPacketType.h"
 #include "Utils.h"
+#include "Platform.h"
 
-static std::string GetWSAErrorMessage(int errorCode)
+#if PLATFORM == PLATFORM_WINDOWS
+#define SOCKET_TIMEOUT ETIMEDOUT
+#else
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <cstring>
+#include <cerrno>
+// https://en.wikipedia.org/wiki/Errno.h
+#define SOCKET_ERROR -1
+#define SOCKET_TIMEOUT EAGAIN // 11
+#define INVALID_SOCKET  (SOCKET)(~0)
+#endif
+
+// Platform specific methods
+#if PLATFORM == PLATFORM_WINDOWS
+static inline int GetNetworkLastError()
+{
+	return WSAGetLastError();
+}
+static std::string GetNetworkErrorMessage(int errorCode)
 {
 	char* msgBuf = nullptr;
 	DWORD size = FormatMessageA(
@@ -27,6 +48,16 @@ static std::string GetWSAErrorMessage(int errorCode)
 	}
 	return message;
 }
+#else
+static inline int GetNetworkLastError()
+{
+	return errno;
+}
+static std::string GetNetworkErrorMessage(int errorCode)
+{
+	return std::strerror(errorCode);
+}
+#endif
 
 ClientNetwork::ClientNetwork(std::shared_ptr<Logger> logger) : m_logger(logger), m_socket(0), m_connectionSalt(0), m_servaddr{}
 {
@@ -35,9 +66,8 @@ ClientNetwork::ClientNetwork(std::shared_ptr<Logger> logger) : m_logger(logger),
 ClientNetwork::~ClientNetwork()
 {
 	// Close the socket and cleanup
+#if PLATFORM == PLATFORM_WINDOWS
 	closesocket(m_socket);
-
-#ifdef _WIN32
 	WSACleanup();
 #else
 	close(m_socket);
@@ -46,7 +76,7 @@ ClientNetwork::~ClientNetwork()
 
 int ClientNetwork::Initialize(std::string server, int port)
 {
-#ifdef _WIN32
+#if PLATFORM == PLATFORM_WINDOWS
 	WSADATA wsaData;
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0) {
 		m_logger->Log(LogLevel::EXCEPTION, "WSAStartup failed");
@@ -56,25 +86,29 @@ int ClientNetwork::Initialize(std::string server, int port)
 
 	m_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (m_socket == INVALID_SOCKET) {
-		auto errorCode = GetLastError();
+		auto errorCode = GetNetworkLastError();
 		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Socket creation failed with error: {}", errorCode);
 		return 1;
 	}
 
-	// Set receive timeout
-#ifdef _WIN32
-	int timeoutMs = 5000; // 1 seconds
-	if (setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, (const char*)&timeoutMs, sizeof(timeoutMs)) < 0) {
-		auto errorCode = GetLastError();
-		std::string errorMsg = GetWSAErrorMessage(errorCode);
-		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to set socket timeout: {}: {}", errorCode, errorMsg);
+	// Set socket to non-blocking mode
+#if PLATFORM == PLATFORM_WINDOWS
+	u_long nonBlocking = 1;
+	if (ioctlsocket(m_socket, FIONBIO, &nonBlocking) != 0) {
+		auto errorCode = GetNetworkLastError();
+		std::string errorMsg = GetNetworkErrorMessage(errorCode);
+		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to set socket to non-blocking: {}: {}", errorCode, errorMsg);
 		return 1;
 	}
 #else
-	struct timeval timeout;
-	timeout.tv_sec = 5; // 5 seconds
-	timeout.tv_usec = 0; // 0 microseconds
-	setsockopt(m_socket, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+	int nonBlocking = 1;
+	if (fcntl(m_socket, F_SETFL, O_NONBLOCK, &nonBlocking) == -1)
+	{
+		auto errorCode = GetNetworkLastError();
+		std::string errorMsg = GetNetworkErrorMessage(errorCode);
+		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to set socket to non-blocking: {}: {}", errorCode, errorMsg);
+		return 1;
+	}
 #endif
 
 	m_servaddr.sin_family = AF_INET;
@@ -87,13 +121,6 @@ int ClientNetwork::Initialize(std::string server, int port)
 	}
 
 	return 0;
-}
-
-bool ClientNetwork::IsServerAddress(sockaddr_in& clientAddr) const
-{
-	return (m_servaddr.sin_family == clientAddr.sin_family &&
-		m_servaddr.sin_addr.s_addr == clientAddr.sin_addr.s_addr &&
-		m_servaddr.sin_port == clientAddr.sin_port);
 }
 
 int ClientNetwork::EstablishConnection()
@@ -222,15 +249,15 @@ std::unique_ptr<NetworkPacket> ClientNetwork::Receive(sockaddr_in& clientAddr, i
 
 	if (n == SOCKET_ERROR)
 	{
-		auto errorCode = GetLastError();
-		if (errorCode == WSAETIMEDOUT)
+		auto errorCode = GetNetworkLastError();
+		if (errorCode == ETIMEDOUT)
 		{
 			// Timeout, no data received
 			result = -1;
 			return nullptr;
 		}
 
-		std::string errorMsg = GetWSAErrorMessage(errorCode);
+		std::string errorMsg = GetNetworkErrorMessage(errorCode);
 		m_logger->Log(LogLevel::EXCEPTION, "Receive: Failed with error: {}: {}", errorCode, errorMsg);
 		result = 1;
 		return nullptr;
@@ -283,10 +310,10 @@ int ClientNetwork::Send(NetworkPacket& networkPacket)
 	m_logger->Log(LogLevel::DEBUG, "Send: Sending {} bytes: {}", size, bufferString);
 #endif
 
-	if (sendto(m_socket, (char*)data.data(), (int)size, 0, (sockaddr*)&m_servaddr, sizeof(m_servaddr)) == SOCKET_ERROR)
+	if (sendto(m_socket, (char*)data.data(), (int)size, 0, (sockaddr*)&m_servaddr, sizeof(m_servaddr)) != size)
 	{
-		auto errorCode = GetLastError();
-		std::string errorMsg = GetWSAErrorMessage(errorCode);
+		auto errorCode = GetNetworkLastError();
+		std::string errorMsg = GetNetworkErrorMessage(errorCode);
 		m_logger->Log(LogLevel::EXCEPTION, "Send: Failed with error: {}: {}", errorCode, errorMsg);
 		return 1;
 	}

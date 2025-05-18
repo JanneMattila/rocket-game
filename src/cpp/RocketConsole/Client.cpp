@@ -99,5 +99,14 @@ int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 int Client::QuitGame()
 {
 	m_logger->Log(LogLevel::DEBUG, "Game is stopping");
+
+	if (!m_serverInitializedShutdown)
+	{
+		// Send disconnect packet to server
+		NetworkPacket sendNetworkPacket;
+		sendNetworkPacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::DISCONNECT));
+		sendNetworkPacket.WriteInt8(0);
+		m_network->Send(sendNetworkPacket);
+	}
 	return 0;
 }

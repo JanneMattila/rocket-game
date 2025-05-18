@@ -16,6 +16,9 @@
     <Filter Include="Shared">
       <UniqueIdentifier>{28b7eecd-f798-41c8-b5ae-6bcacf2e988b}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Others">
+      <UniqueIdentifier>{340a3b0e-d87d-4973-bd89-fb3d2600df91}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -41,5 +44,18 @@
     <ClInclude Include="ClientNetwork.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Dockerfile">
+      <Filter>Others</Filter>
+    </None>
+    <None Include=".dockerignore">
+      <Filter>Others</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="CMakeLists.txt">
+      <Filter>Others</Filter>
+    </Text>
   </ItemGroup>
 </Project>

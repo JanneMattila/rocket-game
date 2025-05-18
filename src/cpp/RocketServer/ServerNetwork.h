@@ -5,7 +5,7 @@
 #include "ServerNetworkBase.h"
 #include "Logger.h"
 
-#ifdef _WIN32
+#if PLATFORM == PLATFORM_WINDOWS
 #else
 typedef int SOCKET;
 #endif

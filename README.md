@@ -7,7 +7,8 @@ Rocket game
 ```powershell
 $resourceGroup = "rg-rocket"
 $acrName = "rocket0000010"
-$image = "rocketserver"
+$imageServer = "rocketserver"
+$imageConsole = "rocketconsole"
 $location = "northeurope"
 
 # Create resource group
@@ -21,10 +22,13 @@ $acrPassword=$(az acr credential show -n $acrName --query passwords[0].value -o 
 
 # Build image
 cd src/cpp/RocketServer
-docker build -t "$acrName.azurecr.io/$image" .
+docker build -t "$acrName.azurecr.io/$imageServer" .
+cd ..\RocketConsole
+docker build -t "$acrName.azurecr.io/$imageConsole" .
 
 # Test image
-docker run -it --rm -p 3501:3501/udp --name $image "$acrName.azurecr.io/$image"
+docker run -it --rm -p 3501:3501/udp --name $imageServer "$acrName.azurecr.io/$imageServer"
+docker run -it --rm --name $imageConsole "$acrName.azurecr.io/$imageConsole"
 
 # Login to ACR
 az acr login --name $acrName
