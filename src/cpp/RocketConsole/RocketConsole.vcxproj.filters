@@ -36,6 +36,15 @@
     <ClCompile Include="..\RocketServer\GamePacket.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\RocketServer\Logger.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RocketServer\CRC32.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RocketServer\Utils.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Client.h">

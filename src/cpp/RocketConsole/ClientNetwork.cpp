@@ -1,11 +1,12 @@
 #include <random>
 #include <cstdint>
+#include <algorithm> 
 #include "ClientNetwork.h"
 #include "NetworkPacketType.h"
 #include "Utils.h"
 
 #ifdef _WIN32
-#define SOCKET_TIMEOUT ETIMEDOUT
+#define SOCKET_TIMEOUT WSAEWOULDBLOCK
 #else
 #include <unistd.h>
 #include <fcntl.h>
@@ -45,6 +46,10 @@ static std::string GetNetworkErrorMessage(int errorCode)
 	{
 		message = "Unknown error";
 	}
+	std::ranges::replace(message, '\r', ' ');
+	std::ranges::replace(message, '\n', ' ');
+	std::ranges::replace(message, '"', '\'');
+
 	return message;
 }
 #else
@@ -54,7 +59,13 @@ static inline int GetNetworkLastError()
 }
 static std::string GetNetworkErrorMessage(int errorCode)
 {
-	return std::strerror(errorCode);
+	auto message = std::strerror(errorCode);
+
+	std::ranges::replace(message, '\r', ' ');
+	std::ranges::replace(message, '\n', ' ');
+	std::ranges::replace(message, '"', '\'');
+
+	return message;
 }
 #endif
 
@@ -86,7 +97,7 @@ int ClientNetwork::Initialize(std::string server, int port)
 	m_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (m_socket == INVALID_SOCKET) {
 		auto errorCode = GetNetworkLastError();
-		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Socket creation failed with error: {}", errorCode);
+		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Socket creation failed", { KV(errorCode) });
 		return 1;
 	}
 
@@ -96,7 +107,7 @@ int ClientNetwork::Initialize(std::string server, int port)
 	if (ioctlsocket(m_socket, FIONBIO, &nonBlocking) != 0) {
 		auto errorCode = GetNetworkLastError();
 		std::string errorMsg = GetNetworkErrorMessage(errorCode);
-		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to set socket to non-blocking: {}: {}", errorCode, errorMsg);
+		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to set socket to non-blocking", { KV(errorCode), KVS(errorMsg) });
 		return 1;
 	}
 #else
@@ -105,7 +116,7 @@ int ClientNetwork::Initialize(std::string server, int port)
 	{
 		auto errorCode = GetNetworkLastError();
 		std::string errorMsg = GetNetworkErrorMessage(errorCode);
-		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to set socket to non-blocking: {}: {}", errorCode, errorMsg);
+		m_logger->Log2(LogLevel::EXCEPTION, "Initialize: Failed to set socket to non-blocking", { KV(errorCode), KVS(errorMsg) });
 		return 1;
 	}
 #endif
@@ -115,7 +126,7 @@ int ClientNetwork::Initialize(std::string server, int port)
 
 	if (inet_pton(AF_INET, server.c_str(), &m_servaddr.sin_addr) != 1)
 	{
-		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to convert address: {}", server);
+		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to convert address", { KVS(server) });
 		return 1;
 	}
 
@@ -176,7 +187,7 @@ int ClientNetwork::EstablishConnection()
 	if (receivedClientSalt != clientSalt)
 	{
 		m_connectionState = NetworkConnectionState::DISCONNECTED;
-		m_logger->Log(LogLevel::WARNING, "EstablishConnection: Client salt mismatch: {} <> {}", clientSalt, receivedClientSalt);
+		m_logger->Log(LogLevel::WARNING, "EstablishConnection: Client salt mismatch", { KV(clientSalt), KV(receivedClientSalt) });
 		return 1;
 	}
 
@@ -249,7 +260,7 @@ std::unique_ptr<NetworkPacket> ClientNetwork::Receive(sockaddr_in& clientAddr, i
 	if (n == SOCKET_ERROR)
 	{
 		auto errorCode = GetNetworkLastError();
-		if (errorCode == ETIMEDOUT)
+		if (errorCode == SOCKET_TIMEOUT)
 		{
 			// Timeout, no data received
 			result = -1;
@@ -257,7 +268,7 @@ std::unique_ptr<NetworkPacket> ClientNetwork::Receive(sockaddr_in& clientAddr, i
 		}
 
 		std::string errorMsg = GetNetworkErrorMessage(errorCode);
-		m_logger->Log(LogLevel::EXCEPTION, "Receive: Failed with error: {}: {}", errorCode, errorMsg);
+		m_logger->Log(LogLevel::EXCEPTION, "Receive: Failed", { KV(errorCode), KVS(errorMsg) });
 		result = 1;
 		return nullptr;
 	}
@@ -271,7 +282,7 @@ std::unique_ptr<NetworkPacket> ClientNetwork::Receive(sockaddr_in& clientAddr, i
 	// Resize the vector to the actual number of bytes received
 	data.resize(n);
 
-	// Log the received buffer as comma seperated values as string
+	// Log the received buffer as comma separated values as string
 #if _DEBUG
 	std::string bufferString;
 	for (size_t i = 0; i < data.size(); i++)
@@ -282,7 +293,7 @@ std::unique_ptr<NetworkPacket> ClientNetwork::Receive(sockaddr_in& clientAddr, i
 			bufferString += ",";
 		}
 	}
-	m_logger->Log(LogLevel::DEBUG, "Receive: Received {} bytes: {}", n, bufferString);
+	m_logger->Log(LogLevel::DEBUG, "Receive: Received bytes", { KV(n), KVS(bufferString) });
 #endif
 
 	return std::make_unique<NetworkPacket>(data);
@@ -296,7 +307,7 @@ int ClientNetwork::Send(NetworkPacket& networkPacket)
 	auto data = networkPacket.ToBytes();
 
 #if _DEBUG
-	// Log the send buffer as comma seperated values as string
+	// Log the send buffer as comma separated values as string
 	std::string bufferString;
 	for (size_t i = 0; i < data.size(); i++)
 	{
@@ -306,14 +317,14 @@ int ClientNetwork::Send(NetworkPacket& networkPacket)
 			bufferString += ",";
 		}
 	}
-	m_logger->Log(LogLevel::DEBUG, "Send: Sending {} bytes: {}", size, bufferString);
+	m_logger->Log(LogLevel::DEBUG, "Send: Sending bytes", { KV(size), KVS(bufferString) });
 #endif
 
 	if (sendto(m_socket, (char*)data.data(), (int)size, 0, (sockaddr*)&m_servaddr, sizeof(m_servaddr)) != size)
 	{
 		auto errorCode = GetNetworkLastError();
 		std::string errorMsg = GetNetworkErrorMessage(errorCode);
-		m_logger->Log(LogLevel::EXCEPTION, "Send: Failed with error: {}: {}", errorCode, errorMsg);
+		m_logger->Log(LogLevel::EXCEPTION, "Send: Failed", { KV(errorCode), KVS(errorMsg) });
 		return 1;
 	}
 	return 0;

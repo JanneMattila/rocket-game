@@ -1,11 +1,12 @@
 #include <random>
 #include <cstdint>
+#include <algorithm> 
 #include "ServerNetwork.h"
 #include "NetworkPacketType.h"
 #include "Utils.h"
 
 #ifdef _WIN32
-#define SOCKET_TIMEOUT ETIMEDOUT
+#define SOCKET_TIMEOUT WSAEWOULDBLOCK
 #else
 #include <unistd.h>
 #include <fcntl.h>
@@ -45,6 +46,11 @@ static std::string GetNetworkErrorMessage(int errorCode)
 	{
 		message = "Unknown error";
 	}
+
+	std::ranges::replace(message, '\r', ' ');
+	std::ranges::replace(message, '\n', ' ');
+	std::ranges::replace(message, '"', '\'');
+
 	return message;
 }
 #else
@@ -54,7 +60,13 @@ static inline int GetNetworkLastError()
 }
 static std::string GetNetworkErrorMessage(int errorCode)
 {
-	return std::strerror(errorCode);
+	auto message = std::strerror(errorCode);
+
+	std::ranges::replace(message, '\r', ' ');
+	std::ranges::replace(message, '\n', ' ');
+	std::ranges::replace(message, '"', '\'');
+
+	return message;
 }
 #endif
 
@@ -88,17 +100,25 @@ int ServerNetwork::Initialize(int port)
 	if (m_socket == INVALID_SOCKET)
 	{
 		auto errorCode = GetNetworkLastError();
-		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Socket creation failed with error: {}", errorCode);
+		m_logger->Log(
+			LogLevel::EXCEPTION,
+			"Initialize: Socket creation failed",
+			{ KV(errorCode) }
+		);
 		return 1;
 	}
 
 	// Set socket to non-blocking mode
 #ifdef _WIN32
 	u_long nonBlocking = 1;
-	if (ioctlsocket(m_socket, FIONBIO, &nonBlocking) != 0){
+	if (ioctlsocket(m_socket, FIONBIO, &nonBlocking) != 0) {
 		auto errorCode = GetNetworkLastError();
 		std::string errorMsg = GetNetworkErrorMessage(errorCode);
-		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to set socket to non-blocking: {}: {}", errorCode, errorMsg);
+		m_logger->Log(
+			LogLevel::EXCEPTION,
+			"Initialize: Failed to set socket to non-blocking",
+			{ KV(errorCode), KVS(errorMsg) }
+		);
 		return 1;
 	}
 #else
@@ -107,7 +127,11 @@ int ServerNetwork::Initialize(int port)
 	{
 		auto errorCode = GetNetworkLastError();
 		std::string errorMsg = GetNetworkErrorMessage(errorCode);
-		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to set socket to non-blocking: {}: {}", errorCode, errorMsg);
+		m_logger->Log2(
+			LogLevel::EXCEPTION,
+			"Initialize: Failed to set socket to non-blocking",
+			{ KV(errorCode), KVS(errorMsg) }
+		);
 		return 1;
 	}
 #endif
@@ -116,36 +140,36 @@ int ServerNetwork::Initialize(int port)
 	m_servaddr.sin_port = htons(port);
 	m_servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	m_logger->Log(LogLevel::INFO, "Initialize: Binding on port: {}", port);
+	m_logger->Log(LogLevel::INFO, "Initialize: Binding on port", { KV(port) });
 	if (bind(m_socket, (sockaddr*)&m_servaddr, sizeof(m_servaddr)) < 0)
 	{
-		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to bind socket on port: {}", port);
+		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to bind socket on port", { KV(port) });
 		return 1;
 	}
 
-	m_logger->Log(LogLevel::INFO, "Initialize: Successfully bound on port: {}", port);
+	m_logger->Log(LogLevel::INFO, "Initialize: Successfully bound on port", { KV(port) });
 
 	return 0;
 }
 
-std::unique_ptr<NetworkPacket> ServerNetwork::Receive(sockaddr_in& clientAddr, int &result)
+std::unique_ptr<NetworkPacket> ServerNetwork::Receive(sockaddr_in& clientAddr, int& result)
 {
 	// Resize the vector to the maximum buffer size
 	std::vector<uint8_t> data(1024);
 
 	socklen_t addrLen = sizeof(clientAddr);
 	int n = recvfrom(
-		m_socket, 
-		reinterpret_cast<char*>(data.data()), 
-		(int)data.size(), 
-		0, 
+		m_socket,
+		reinterpret_cast<char*>(data.data()),
+		(int)data.size(),
+		0,
 		reinterpret_cast<sockaddr*>(&clientAddr),
 		&addrLen);
 
 	if (n == SOCKET_ERROR)
 	{
 		auto errorCode = GetNetworkLastError();
-		if (errorCode == ETIMEDOUT)
+		if (errorCode == SOCKET_TIMEOUT)
 		{
 			// Timeout, no data received
 			result = -1;
@@ -153,7 +177,11 @@ std::unique_ptr<NetworkPacket> ServerNetwork::Receive(sockaddr_in& clientAddr, i
 		}
 
 		std::string errorMsg = GetNetworkErrorMessage(errorCode);
-		m_logger->Log(LogLevel::EXCEPTION, "Receive: Failed with error: {}: {}", errorCode, errorMsg);
+		m_logger->Log(
+			LogLevel::EXCEPTION,
+			"Receive: Failed",
+			{ KV(errorCode), KVS(errorMsg) }
+		);
 		result = 1;
 		return nullptr;
 	}
@@ -167,7 +195,7 @@ std::unique_ptr<NetworkPacket> ServerNetwork::Receive(sockaddr_in& clientAddr, i
 	// Resize the vector to the actual number of bytes received
 	data.resize(n);
 
-	// Log the received buffer as comma seperated values as string
+	// Log the received buffer as comma separated values as string
 #if _DEBUG
 	std::string bufferString;
 	for (size_t i = 0; i < data.size(); i++)
@@ -178,7 +206,11 @@ std::unique_ptr<NetworkPacket> ServerNetwork::Receive(sockaddr_in& clientAddr, i
 			bufferString += ",";
 		}
 	}
-	m_logger->Log(LogLevel::DEBUG, "Receive: Received {} bytes: {}", n, bufferString);
+	m_logger->Log(
+		LogLevel::DEBUG,
+		"Receive: Received bytes",
+		{ KV(n), KVS(bufferString) }
+	);
 #endif
 
 	return std::make_unique<NetworkPacket>(data);
@@ -192,7 +224,7 @@ int ServerNetwork::Send(NetworkPacket& networkPacket, sockaddr_in& clientAddr)
 	auto data = networkPacket.ToBytes();
 
 #if _DEBUG
-	// Log the send buffer as comma seperated values as string
+	// Log the send buffer as comma separated values as string
 	std::string bufferString;
 	for (size_t i = 0; i < data.size(); i++)
 	{
@@ -202,14 +234,22 @@ int ServerNetwork::Send(NetworkPacket& networkPacket, sockaddr_in& clientAddr)
 			bufferString += ",";
 		}
 	}
-	m_logger->Log(LogLevel::DEBUG, "Send: Sending {} bytes: {}", size, bufferString);
+	m_logger->Log(
+		LogLevel::DEBUG,
+		"Send: Sending bytes",
+		{ KV(size), KVS(bufferString) }
+	);
 #endif
 
 	if (sendto(m_socket, (char*)data.data(), (int)size, 0, (sockaddr*)&clientAddr, sizeof(clientAddr)) != size)
 	{
 		auto errorCode = GetNetworkLastError();
 		std::string errorMsg = GetNetworkErrorMessage(errorCode);
-		m_logger->Log(LogLevel::EXCEPTION, "Send: Failed with error: {}: {}", errorCode, errorMsg);
+		m_logger->Log(
+			LogLevel::EXCEPTION,
+			"Send: Failed",
+			{ KV(errorCode), KVS(errorMsg) }
+		);
 		return 1;
 	}
 	return 0;

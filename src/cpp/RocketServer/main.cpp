@@ -27,7 +27,7 @@ static void SignalHandler(int signal)
 {
 	if (signal == SIGINT || signal == SIGTERM)
 	{
-		g_logger->Log(LogLevel::INFO, "Server shutdown requested (signal {})", signal);
+		g_logger->Log(LogLevel::INFO, "Server shutdown requested", { KV(signal) });
 		g_running = 0;
 	}
 }
@@ -50,7 +50,7 @@ int main()
 		udpPort = std::atoi(envPort);
 	}
 
-	g_logger->Log(LogLevel::INFO, "Listening in UDP Port: {}", udpPort);
+	g_logger->Log(LogLevel::INFO, "Listening in UDP Port: {udpPort}", { KV(udpPort) });
 
 	std::unique_ptr<ServerNetwork> network = std::make_unique<ServerNetwork>(g_logger);
 	g_server = std::make_unique<Server>(g_logger, std::move(network));

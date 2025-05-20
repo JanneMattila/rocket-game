@@ -4,6 +4,8 @@
 
 https://gafferongames.com/
 
+https://opentelemetry.io/docs/languages/cpp/getting-started/
+
 https://learn-monogame.github.io/tutorial/infinite-background-shader/
 
 https://learn-monogame.github.io/how-to/fullscreen/
@@ -99,3 +101,8 @@ https://opengameart.org/content/sci-fi-sounds
 https://www.angelcode.com/products/bmfont/
 
 https://www.monogameextended.net/docs/features/fonts/bitmapfont/
+
+## Libraries
+
+https://github.com/open-telemetry/opentelemetry-cpp
+

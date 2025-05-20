@@ -39,9 +39,6 @@
     <ClCompile Include="..\..\src\cpp\RocketServer\GamePacket.cpp">
       <Filter>RocketServer</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\cpp\RocketServer\Logger.cpp">
-      <Filter>RocketServer</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\cpp\RocketServer\main.cpp">
       <Filter>RocketServer</Filter>
     </ClCompile>
@@ -53,6 +50,9 @@
     </ClCompile>
     <ClCompile Include="NetworkPacketTest.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cpp\RocketServer\Logger.cpp">
+      <Filter>RocketServer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

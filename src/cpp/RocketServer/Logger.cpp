@@ -1,55 +1,58 @@
 #include "Logger.h"
+#include <iostream>
+#include <mutex>
+#include <ctime>
 #include <iomanip>
+#include <sstream>
 
-// Constructor
-Logger::Logger() : m_logLevel(LogLevel::INFO), m_fileLoggingEnabled(false) {}
+static std::mutex s_mutex;
 
-// Destructor
-Logger::~Logger() {
-    if (m_logFile.is_open()) {
-        m_logFile.close();
-    }
-}
+Logger::Logger() {}
+Logger::~Logger() {}
 
-// Set the logging level
-void Logger::SetLogLevel(LogLevel level) {
+void Logger::SetLogLevel(LogLevel level)
+{
     m_logLevel = level;
 }
 
-// Enable logging to a file
-void Logger::EnableFileLogging(const std::string& filePath) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (m_logFile.is_open()) {
-        m_logFile.close();
-    }
-    m_logFile.open(filePath, std::ios::out | std::ios::app);
-    m_fileLoggingEnabled = m_logFile.is_open();
-}
+void Logger::Log(
+    LogLevel level,
+    const std::string& message,
+    const std::map<std::string, std::string>& properties
+)
+{
+    if (level < m_logLevel) return;
 
-// Disable logging to a file
-void Logger::DisableFileLogging() {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    if (m_logFile.is_open()) {
-        m_logFile.close();
-    }
-    m_fileLoggingEnabled = false;
-}
-
-// Get the current timestamp
-std::string Logger::GetTimestamp() {
     std::time_t now = std::time(nullptr);
-    std::tm localTime;
+    std::tm utcTime;
 #ifdef _WIN32
-    localtime_s(&localTime, &now);
+    gmtime_s(&utcTime, &now);
 #else
-    localtime_r(&now, &localTime);
+    gmtime_r(&now, &utcTime);
 #endif
-    std::ostringstream oss;
-    oss << std::put_time(&localTime, "%Y-%m-%d %H:%M:%S");
-    return oss.str();
+
+    try
+    {
+        std::lock_guard<std::mutex> lock(s_mutex);
+        std::ostringstream oss;
+        oss
+            << "{"
+            << "\"timestamp\":\"" << std::put_time(&utcTime, "%Y-%m-%dT%H:%M:%SZ") << "\","
+            << "\"severity\":\"" << LogLevelToString(level) << "\","
+            << "\"message\":\"" << message << "\"";
+        for (const auto& kv : properties) {
+            oss << ",\"" << kv.first << "\":\"" << kv.second << "\"";
+        }
+        oss << "}";
+        std::cout << oss.str() << std::endl;
+    }
+    catch (const std::exception&)
+    {
+
+    }
+
 }
 
-// Convert LogLevel to string
 std::string Logger::LogLevelToString(LogLevel level) {
     switch (level) {
     case LogLevel::DEBUG: return "DEBUG";

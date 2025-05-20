@@ -68,7 +68,7 @@ int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 		size_t size = networkPacket->Size();
 		if (size < CRC32::CRC_SIZE)
 		{
-			m_logger->Log(LogLevel::WARNING, "Received too small packet: {}", size);
+			m_logger->Log(LogLevel::WARNING, "Received too small packet", { KV(size) });
 			continue;
 		}
 
@@ -80,16 +80,16 @@ int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 
 		switch (networkPacket->GetNetworkPacketType())
 		{
-			case NetworkPacketType::GAME_STATE:
-				m_logger->Log(LogLevel::DEBUG, "Game state packet received");
-				break;
-			case NetworkPacketType::DISCONNECT:
-				m_logger->Log(LogLevel::DEBUG, "Disconnect packet received");
-				running = false;
-				break;
-			default:
-				m_logger->Log(LogLevel::WARNING, "Unknown packet type");
-				break;
+		case NetworkPacketType::GAME_STATE:
+			m_logger->Log(LogLevel::DEBUG, "Game state packet received");
+			break;
+		case NetworkPacketType::DISCONNECT:
+			m_logger->Log(LogLevel::DEBUG, "Disconnect packet received");
+			running = false;
+			break;
+		default:
+			m_logger->Log(LogLevel::WARNING, "Unknown packet type");
+			break;
 		}
 	}
 

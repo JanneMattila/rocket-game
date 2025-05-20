@@ -38,7 +38,7 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 
 		if (result == -1)
 		{
-			m_logger->Log(LogLevel::DEBUG, "Waiting for data");
+			//m_logger->Log(LogLevel::DEBUG, "Waiting for data");
 			continue;
 		}
 
@@ -51,11 +51,11 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 		std::string address = addrToString(clientAddr);
 		size_t size = networkPacket->Size();
 
-		m_logger->Log(LogLevel::DEBUG, "Received {} bytes from {}", size, address);
+		m_logger->Log(LogLevel::DEBUG, "Received bytes from client", { KV(size), KVS(address) });
 
 		if (size < CRC32::CRC_SIZE)
 		{
-			m_logger->Log(LogLevel::WARNING, "Received too small packet: {}", size);
+			m_logger->Log(LogLevel::WARNING, "Received too small packet", { KV(size) });
 			continue;
 		}
 
@@ -67,7 +67,7 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 
 		NetworkPacketType packetType = networkPacket->GetNetworkPacketType();
 		auto packetTypeInt = static_cast<int>(packetType);
-		m_logger->Log(LogLevel::DEBUG, "Received packet type: {}", packetTypeInt);
+		m_logger->Log(LogLevel::DEBUG, "Received packet type", { KV(packetTypeInt) });
 
 		switch (packetType)
 		{
@@ -75,7 +75,7 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 		{
 			if (size != 1000)
 			{
-				m_logger->Log(LogLevel::WARNING, "Received invalid packet size for connection request: {}", size);
+				m_logger->Log(LogLevel::WARNING, "Received invalid packet size for connection request", { KV(size) });
 				continue;
 			}
 
@@ -88,7 +88,7 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 		case NetworkPacketType::CHALLENGE_RESPONSE:
 			if (size != 1000)
 			{
-				m_logger->Log(LogLevel::WARNING, "Received invalid packet size for challenge: {}", size);
+				m_logger->Log(LogLevel::WARNING, "Received invalid packet size for challenge", { KV(size) });
 				continue;
 			}
 
@@ -119,7 +119,7 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 
 	for (const Player& player : m_players) {
 		if (player.Address == clientAddr) {
-			m_logger->Log(LogLevel::DEBUG, "Client {} has already started connection request", player.PlayerID);
+			m_logger->Log(LogLevel::DEBUG, "Client has already started connection request", { KV(player.PlayerID) });
 			playerID = player.PlayerID;
 			break;
 		}
@@ -161,7 +161,7 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 	player.Created = std::chrono::steady_clock::now();
 	m_players.push_back(player);
 
-	m_logger->Log(LogLevel::DEBUG, "Player {} challenge", player.PlayerID);
+	m_logger->Log(LogLevel::DEBUG, "Player challenge", { KV(player.PlayerID) });
 
 	networkPacket->Clear();
 	networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CHALLENGE));
@@ -188,8 +188,8 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 
 			if (player.Salt == salt)
 			{
-				m_logger->Log(LogLevel::DEBUG, "HandleChallengeRequest: Player {} connection accepted", player.PlayerID);
-				
+				m_logger->Log(LogLevel::DEBUG, "HandleChallengeRequest: Player connection accepted", { KV(player.PlayerID) });
+
 				player.ConnectionState = NetworkConnectionState::CONNECTED;
 
 				networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CONNECTION_ACCEPTED));
@@ -203,7 +203,7 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 			}
 			else
 			{
-				m_logger->Log(LogLevel::WARNING, "HandleChallengeRequest: Player {} connection not accepted", player.PlayerID);
+				m_logger->Log(LogLevel::WARNING, "HandleChallengeRequest: Player connection not accepted", { KV(player.PlayerID) });
 
 				// Remove player from m_players
 				auto it = std::find_if(m_players.begin(), m_players.end(),
