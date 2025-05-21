@@ -29,6 +29,9 @@ int Server::Initialize(int port)
 
 int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 {
+	int idleTime = 0;
+	auto idle = std::chrono::steady_clock::now();
+	m_logger->Log(LogLevel::DEBUG, "Server is running");
 	while (running)
 	{
 		sockaddr_in clientAddr{};
@@ -38,7 +41,19 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 
 		if (result == -1)
 		{
-			//m_logger->Log(LogLevel::DEBUG, "Waiting for data");
+			auto now = std::chrono::steady_clock::now();
+			if (std::chrono::duration_cast<std::chrono::milliseconds>(now - idle).count() >= 5000)
+			{
+				idle = now;
+				m_logger->Log(LogLevel::DEBUG, "Waiting for data");
+				idleTime++;
+				if (idleTime > 20)
+				{
+					m_logger->Log(LogLevel::INFO, "No data received for a while, exiting");
+					running = 0;
+				}
+			}
+
 			continue;
 		}
 
@@ -48,6 +63,7 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 			continue;
 		}
 
+		idleTime = 0;
 		std::string address = addrToString(clientAddr);
 		size_t size = networkPacket->Size();
 
