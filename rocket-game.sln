@@ -9,6 +9,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{2B56AC78-1
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "doc", "doc", "{B2309015-9159-4C52-BACB-A94F0F6E7A36}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		Credits.md = Credits.md
 		README.md = README.md
 	EndProjectSection

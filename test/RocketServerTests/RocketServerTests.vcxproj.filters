@@ -54,6 +54,9 @@
     <ClCompile Include="..\..\src\cpp\RocketServer\Logger.cpp">
       <Filter>RocketServer</Filter>
     </ClCompile>
+    <ClCompile Include="SequenceNumberTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h">

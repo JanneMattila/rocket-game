@@ -31,7 +31,7 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 {
 	int idleTime = 0;
 	auto idle = std::chrono::steady_clock::now();
-	m_logger->Log(LogLevel::DEBUG, "Server is running");
+	m_logger->Log(LogLevel::INFO, "Server is running");
 	while (running)
 	{
 		sockaddr_in clientAddr{};
@@ -42,7 +42,7 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 		if (result == -1)
 		{
 			auto now = std::chrono::steady_clock::now();
-			if (std::chrono::duration_cast<std::chrono::milliseconds>(now - idle).count() >= 5000)
+			if (std::chrono::duration_cast<std::chrono::milliseconds>(now - idle).count() >= 5000 /* 5 seconds */)
 			{
 				idle = now;
 				m_logger->Log(LogLevel::DEBUG, "Waiting for data");

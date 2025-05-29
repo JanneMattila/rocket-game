@@ -2,7 +2,7 @@
 
 
 std::vector<uint8_t> GamePacket::ToBytes() {
-    WriteInt64(Ticks);
+    WriteInt64(_ticks);
     WriteInt32(static_cast<int32_t>(PositionX * 1000));
     WriteInt32(static_cast<int32_t>(PositionY * 1000));
     WriteInt32(static_cast<int32_t>(VelocityX * 1000));
@@ -10,7 +10,7 @@ std::vector<uint8_t> GamePacket::ToBytes() {
     WriteInt32(static_cast<int32_t>(Rotation * 1000));
     WriteInt32(static_cast<int32_t>(Speed * 1000));
     WriteInt32(static_cast<int32_t>(Delta * 1000));
-    WriteKeyboard(IsUp, IsDown, IsLeft, IsRight, IsFiring);
+    WriteKeyboard(_isUp, _isDown, _isLeft, _isRight, _isFiring);
     
     m_crc.reset();
     uint8_t magic = PROTOCOL_MAGIC_NUMBER;
@@ -23,8 +23,8 @@ std::vector<uint8_t> GamePacket::ToBytes() {
 }
 
 void GamePacket::ReadFromBytes(const std::vector<uint8_t>& data) {
-    if (data.size() != ExpectedMessageSize)
-        throw std::runtime_error("Invalid message size");
+    //if (data.size() != ExpectedMessageSize)
+    //    throw std::runtime_error("Invalid message size");
     // CRC32 check
     uint32_t received_crc = 0;
     for (int i = 0; i < CRC32::CRC_SIZE; ++i) received_crc |= (data[i] << (i * 8));
@@ -35,7 +35,7 @@ void GamePacket::ReadFromBytes(const std::vector<uint8_t>& data) {
     uint32_t calc_crc = m_crc.value();
     if (received_crc != calc_crc)
         throw std::runtime_error("CRC32 mismatch");
-    this->Ticks = ReadInt64();
+    this->_ticks = ReadInt64();
     this->PositionX = ReadInt32ToFloat();
     this->PositionY = ReadInt32ToFloat();
     this->VelocityX = ReadInt32ToFloat();
@@ -44,9 +44,9 @@ void GamePacket::ReadFromBytes(const std::vector<uint8_t>& data) {
     this->Speed = ReadInt32ToFloat();
     this->Delta = ReadInt32ToFloat();
     uint8_t k = ReadInt8();
-    this->IsUp = (k >> 5) & 1;
-    this->IsDown = (k >> 4) & 1;
-    this->IsLeft = (k >> 3) & 1;
-    this->IsRight = (k >> 2) & 1;
-    this->IsFiring = k & 1;
+    this->_isUp = (k >> 5) & 1;
+    this->_isDown = (k >> 4) & 1;
+    this->_isLeft = (k >> 3) & 1;
+    this->_isRight = (k >> 2) & 1;
+    this->_isFiring = k & 1;
 }
