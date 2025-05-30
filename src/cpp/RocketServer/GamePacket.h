@@ -14,6 +14,8 @@ struct Player
     uint8_t keyboard;
 };
 
+
+
 class GamePacket :
     public NetworkPacket
 {

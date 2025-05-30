@@ -48,13 +48,16 @@
     <ClCompile Include="..\..\src\cpp\RocketServer\Utils.cpp">
       <Filter>RocketServer</Filter>
     </ClCompile>
-    <ClCompile Include="NetworkPacketTest.cpp">
+    <ClCompile Include="NetworkPacketTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\cpp\RocketServer\Logger.cpp">
       <Filter>RocketServer</Filter>
     </ClCompile>
     <ClCompile Include="SequenceNumberTests.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="AckTests.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
