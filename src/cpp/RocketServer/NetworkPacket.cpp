@@ -115,7 +115,7 @@ int NetworkPacket::Validate()
 	m_crc.reset();
 	uint8_t magic = PROTOCOL_MAGIC_NUMBER;
 	m_crc.update(&magic, 1);
-	m_crc.update(m_buffer.data() + 4, m_buffer.size() - 4);
+	m_crc.update(m_buffer.data() + CRC32::CRC_SIZE, m_buffer.size() - CRC32::CRC_SIZE);
 	uint32_t calc_crc = m_crc.value();
 	if (received_crc != calc_crc)
 	{
@@ -129,7 +129,7 @@ void NetworkPacket::CalculateCRC()
 	m_crc.reset();
 	uint8_t magic = PROTOCOL_MAGIC_NUMBER;
 	m_crc.update(&magic, 1);
-	m_crc.update(m_buffer.data() + CRC32::CRC_SIZE - 1, m_buffer.size() - CRC32::CRC_SIZE + 1);
+	m_crc.update(m_buffer.data() + CRC32::CRC_SIZE, m_buffer.size() - CRC32::CRC_SIZE);
 	uint32_t crc = htonl(m_crc.value());
 	std::memcpy(m_buffer.data(), &crc, sizeof(crc));
 }

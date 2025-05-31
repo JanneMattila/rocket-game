@@ -143,7 +143,10 @@ int ClientNetwork::EstablishConnection()
 	networkPacket->WriteInt64(clientSalt);
 
 	// Pad the packet to 1000 bytes
-	for (size_t i = 0; i < 1000 - sizeof(uint32_t) - sizeof(uint64_t); i++)
+	for (size_t i = 0; i < 1000 
+        - sizeof(uint32_t) /* crc32 */
+        - sizeof(uint8_t) /* packet type */
+        - sizeof(uint64_t) /* client salt */; i++)
 	{
 		networkPacket->WriteInt8(0);
 	}
@@ -201,7 +204,10 @@ int ClientNetwork::EstablishConnection()
 	networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CHALLENGE_RESPONSE));
 	networkPacket->WriteInt64(m_connectionSalt);
 	// Pad the packet to 1000 bytes
-	for (size_t i = 0; i < 1000 - sizeof(uint32_t) - sizeof(uint64_t); i++)
+	for (size_t i = 0; i < 1000
+        - sizeof(uint32_t) /* crc32 */
+        - sizeof(uint8_t) /* packet type */
+        - sizeof(uint64_t) /* client salt */; i++)
 	{
 		networkPacket->WriteInt8(0);
 	}
