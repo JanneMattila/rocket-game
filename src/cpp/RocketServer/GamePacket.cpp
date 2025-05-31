@@ -35,7 +35,7 @@ void GamePacket::ReadFromBytes(const std::vector<uint8_t>& data) {
     uint32_t calc_crc = m_crc.value();
     if (received_crc != calc_crc)
         throw std::runtime_error("CRC32 mismatch");
-    this->_ticks = ReadInt64();
+    this->_ticks = ReadUInt64();
     this->PositionX = ReadInt32ToFloat();
     this->PositionY = ReadInt32ToFloat();
     this->VelocityX = ReadInt32ToFloat();

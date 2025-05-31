@@ -51,6 +51,13 @@ void NetworkPacket::WriteInt64(int64_t value)
 	m_buffer.insert(m_buffer.end(), p, p + sizeof(int64_t));
 }
 
+void NetworkPacket::WriteUInt64(uint64_t value)
+{
+    uint64_t net = htonll(value);
+    uint8_t* p = reinterpret_cast<uint8_t*>(&net);
+    m_buffer.insert(m_buffer.end(), p, p + sizeof(uint64_t));
+}
+
 void NetworkPacket::WriteKeyboard(uint8_t up, uint8_t down, uint8_t left, uint8_t right, uint8_t firing)
 {
 	uint8_t k = (up << 5) | (down << 4) | (left << 3) | (right << 2) | firing;
@@ -64,11 +71,11 @@ int8_t NetworkPacket::ReadInt8()
 	return value;
 }
 
-int64_t NetworkPacket::ReadInt64()
+uint64_t NetworkPacket::ReadUInt64()
 {
-	int64_t net = 0;
-	std::memcpy(&net, m_buffer.data() + m_offset, sizeof(int64_t));
-	m_offset += sizeof(int64_t);
+    uint64_t net = 0;
+	std::memcpy(&net, m_buffer.data() + m_offset, sizeof(uint64_t));
+	m_offset += sizeof(uint64_t);
 	return ntohll(net);
 }
 
@@ -96,19 +103,13 @@ NetworkPacket NetworkPacket::FromBytes(const std::vector<uint8_t>& data)
 	return *this;
 }
 
-NetworkPacketType NetworkPacket::GetNetworkPacketType()
+NetworkPacketType NetworkPacket::ReadNetworkPacketType()
 {
-	size_t offset = static_cast<size_t>(CRC32::CRC_SIZE);
-	if (m_buffer.size() < offset)
-	{
-		return NetworkPacketType::UNKNOWN;
-	}
-
-	int8_t networkPacketType = m_buffer[offset];
+	int8_t networkPacketType = ReadInt8();
 	return static_cast<NetworkPacketType>(networkPacketType);
 }
 
-int NetworkPacket::Validate()
+int NetworkPacket::ReadAndValidateCRC()
 {
 	// CRC32 check
 	uint32_t received_crc = ReadInt32();

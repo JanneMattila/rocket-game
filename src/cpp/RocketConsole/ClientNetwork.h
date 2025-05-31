@@ -16,7 +16,9 @@ class ClientNetwork
 private:
 	SOCKET m_socket{};
 	struct sockaddr_in m_servaddr {};
-	uint64_t m_connectionSalt = 0;
+    uint64_t m_clientSalt = 0;
+    uint64_t m_serverSalt = 0;
+    uint64_t m_connectionSalt = 0;
 	std::shared_ptr<Logger> m_logger;
 	NetworkConnectionState m_connectionState = NetworkConnectionState::DISCONNECTED;
 

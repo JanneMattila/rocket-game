@@ -72,13 +72,13 @@ int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 			continue;
 		}
 
-		if (networkPacket->Validate())
+		if (networkPacket->ReadAndValidateCRC())
 		{
 			m_logger->Log(LogLevel::WARNING, "Invalid packet");
 			continue;
 		}
 
-		switch (networkPacket->GetNetworkPacketType())
+		switch (networkPacket->ReadNetworkPacketType())
 		{
 		case NetworkPacketType::GAME_STATE:
 			m_logger->Log(LogLevel::DEBUG, "Game state packet received");

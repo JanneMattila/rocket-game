@@ -3,6 +3,6 @@
 class Utils
 {
 public:
-	static uint64_t GetRandomNumber64();
+	static uint64_t GetRandomNumberUInt64();
 };
 

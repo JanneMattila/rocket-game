@@ -100,7 +100,8 @@ namespace RocketServerTests
 			Assert::AreEqual(sendExpected, sendActual, L"Server should send a response after handling connection request");
 
 			NetworkPacket sendPacket(network->SendData[0]);
-			NetworkPacketType packetType = sendPacket.GetNetworkPacketType();
+            sendPacket.ReadAndValidateCRC();
+			NetworkPacketType packetType = sendPacket.ReadNetworkPacketType();
 			Assert::AreEqual(NetworkPacketType::CHALLENGE, packetType, L"Packet type should be CHALLENGE");
 		}
 	};

@@ -75,13 +75,13 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 			continue;
 		}
 
-		if (networkPacket->Validate())
+		if (networkPacket->ReadAndValidateCRC())
 		{
 			m_logger->Log(LogLevel::WARNING, "Packet validation failed");
 			continue;
 		}
 
-		NetworkPacketType packetType = networkPacket->GetNetworkPacketType();
+		NetworkPacketType packetType = networkPacket->ReadNetworkPacketType();
 		auto packetTypeInt = static_cast<int>(packetType);
 		m_logger->Log(LogLevel::DEBUG, "Received packet type", { KV(packetTypeInt) });
 
@@ -167,26 +167,32 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 		playerID = 1;
 	}
 
+    uint64_t clientSalt = networkPacket->ReadUInt64();
+    uint64_t serverSalt = Utils::GetRandomNumberUInt64();
+    m_logger->Log(LogLevel::DEBUG, "HandleConnectionRequest: Received connection request with client salt", { KV(clientSalt) });
+
 	Player player;
 	player.ConnectionState = NetworkConnectionState::CONNECTING;
-	player.ClientSalt = networkPacket->ReadInt64();
-	player.ServerSalt = Utils::GetRandomNumber64();
+	player.ClientSalt = clientSalt;
+	player.ServerSalt = serverSalt;
 	player.Salt = player.ClientSalt ^ player.ServerSalt;
 	player.PlayerID = playerID;
 	player.Address = clientAddr;
 	player.Created = std::chrono::steady_clock::now();
 	m_players.push_back(player);
 
-	m_logger->Log(LogLevel::DEBUG, "Player challenge", { KV(player.PlayerID) });
+	m_logger->Log(LogLevel::DEBUG, "HandleConnectionRequest: Player challenge", { KV(playerID) });
 
 	networkPacket->Clear();
 	networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CHALLENGE));
-	networkPacket->WriteInt64(player.ClientSalt);
-	networkPacket->WriteInt64(player.ServerSalt);
+	networkPacket->WriteUInt64(clientSalt);
+	networkPacket->WriteUInt64(serverSalt);
+
+    m_logger->Log(LogLevel::WARNING, "HandleConnectionRequest: Sending challenge", { KV(clientSalt), KV(serverSalt) });
 
 	if (m_network->Send(*networkPacket, clientAddr) != 0)
 	{
-		m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Failed to send challenge");
+		m_logger->Log(LogLevel::DEBUG, "HandleConnectionRequest: Failed to send challenge");
 		return 1;
 	}
 	return 0;
@@ -194,7 +200,7 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 
 int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr)
 {
-	int64_t salt = networkPacket->ReadInt64();
+	int64_t salt = networkPacket->ReadUInt64();
 
 	for (Player& player : m_players)
 	{

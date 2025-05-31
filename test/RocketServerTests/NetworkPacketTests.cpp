@@ -18,7 +18,7 @@ namespace RocketServerTests
             int expected = 1;
 
             // Act
-            int actual = networkPacket.Validate();
+            int actual = networkPacket.ReadAndValidateCRC();
 
             // Assert
             Assert::AreEqual(expected, actual, L"Validation should have failed");
@@ -32,7 +32,7 @@ namespace RocketServerTests
             int expected = 0;
 
             // Act
-            int actual = networkPacket.Validate();
+            int actual = networkPacket.ReadAndValidateCRC();
 
             // Assert
             Assert::AreEqual(expected, actual, L"Validation should have succeeded");

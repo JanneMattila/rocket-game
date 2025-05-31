@@ -28,7 +28,7 @@ public:
     NetworkPacket(std::vector<uint8_t>& data);
     virtual std::vector<uint8_t> ToBytes();
     virtual NetworkPacket FromBytes(const std::vector<uint8_t>& data);
-    virtual int Validate();
+    virtual int ReadAndValidateCRC();
 
     size_t Size();
     void Clear();
@@ -36,10 +36,11 @@ public:
     void WriteInt8(int8_t value);
     void WriteInt32(int32_t value);
     void WriteInt64(int64_t value);
+    void WriteUInt64(uint64_t value);
     void WriteKeyboard(uint8_t up, uint8_t down, uint8_t left, uint8_t right, uint8_t firing);
-    NetworkPacketType GetNetworkPacketType();
+    NetworkPacketType ReadNetworkPacketType();
     int8_t ReadInt8();
     int32_t ReadInt32();
-    int64_t ReadInt64();
+    uint64_t ReadUInt64();
     float ReadInt32ToFloat();
 };

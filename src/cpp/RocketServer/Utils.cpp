@@ -1,7 +1,7 @@
 #include "Utils.h"
 #include <random>
 
-uint64_t Utils::GetRandomNumber64()
+uint64_t Utils::GetRandomNumberUInt64()
 {
     std::random_device rd; // Non-deterministic random number generator
     std::mt19937_64 gen(rd()); // Seed the Mersenne Twister with random_device
