@@ -179,6 +179,13 @@ int ClientNetwork::EstablishConnection()
 		return 1;
 	}
 
+    if (!IsServerAddress(clientAddr))
+    {
+        m_connectionState = NetworkConnectionState::DISCONNECTED;
+        m_logger->Log(LogLevel::WARNING, "EstablishConnection: Received data from unknown address");
+        return 1;
+    }
+
 	if (challengePacket->ReadAndValidateCRC())
 	{
 		m_connectionState = NetworkConnectionState::DISCONNECTED;
@@ -234,12 +241,21 @@ int ClientNetwork::EstablishConnection()
     std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
     std::unique_ptr<NetworkPacket> challengeResponsePacket = Receive(clientAddr, result);
+
 	if (result != 0)
 	{
 		m_connectionState = NetworkConnectionState::DISCONNECTED;
 		m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Timeout waiting for response to challenge request");
 		return 1;
 	}
+
+    if (!IsServerAddress(clientAddr))
+    {
+        m_connectionState = NetworkConnectionState::DISCONNECTED;
+        m_logger->Log(LogLevel::WARNING, "EstablishConnection: Received data from unknown address");
+        return 1;
+    }
+
 	if (challengeResponsePacket->ReadAndValidateCRC())
 	{
 		m_connectionState = NetworkConnectionState::DISCONNECTED;

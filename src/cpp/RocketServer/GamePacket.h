@@ -1,5 +1,6 @@
 #pragma once
 #include "NetworkPacket.h"
+#include <chrono>
 
 struct Vector
 {
@@ -14,7 +15,14 @@ struct Player
     uint8_t keyboard;
 };
 
-
+struct PacketHeader
+{
+    uint64_t seqNum{};
+    bool acknowledged{};
+    std::chrono::steady_clock::time_point sendTicks{};
+    std::chrono::steady_clock::time_point receiveTicks{};
+    std::chrono::steady_clock::duration roundTripTime{};
+};
 
 class GamePacket :
     public NetworkPacket

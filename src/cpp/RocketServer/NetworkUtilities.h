@@ -1,6 +1,9 @@
 #pragma once
 #include <cstdint>
 #include <vector>
+#include <GamePacket.h>
+#include <chrono>
+#include <assert.h>
 
 constexpr auto SEQUENCE_NUMBER_MAX = 65535;
 constexpr auto SEQUENCE_NUMBER_HALF = 32768;
@@ -44,6 +47,35 @@ public:
             {
                 ackBits |= (1u << bit);
             }
+        }
+    }
+
+    static inline void VerifyAck(std::vector<PacketHeader>& data, const uint16_t& ack, uint32_t& ackBits)
+    {
+        assert(data.size() != 0 && "Data cannot be empty when verifying acks");
+
+        size_t idx = data.size() - 1;
+        bool isAck = true;
+        uint16_t expected = static_cast<uint16_t>(ack);
+
+        for (int bit = 31; bit >= 0; bit--, expected = static_cast<uint16_t>(expected - 1))
+        {
+            while (idx > 0 && data[idx].seqNum > expected)
+            {
+                idx--;
+            }
+            if (idx >= 0 && data[idx].seqNum == expected)
+            {
+                if (!data[idx].acknowledged)
+                {
+                    // First acknowledgement time of the packet is relevant
+                    data[idx].acknowledged = isAck;
+                    data[idx].receiveTicks = std::chrono::steady_clock::now();
+                    data[idx].roundTripTime = data[idx].receiveTicks - data[idx].sendTicks;
+                }
+            }
+
+            isAck = (ackBits & (1u << bit)) != 0;
         }
     }
 };
