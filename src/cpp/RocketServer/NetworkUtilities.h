@@ -50,7 +50,7 @@ public:
         }
     }
 
-    static inline void VerifyAck(std::vector<PacketHeader>& data, const uint16_t& ack, uint32_t& ackBits)
+    static inline void VerifyAck(std::vector<PacketInfo>& data, const uint16_t& ack, uint32_t& ackBits)
     {
         assert(data.size() != 0 && "Data cannot be empty when verifying acks");
 

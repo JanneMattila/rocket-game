@@ -62,16 +62,16 @@ namespace RocketServerTests
             using namespace std::chrono;
 
             uint16_t ack = 100;
-            // Create PacketHeaders for seqNum 68..100 (inclusive)
-            std::vector<PacketHeader> data;
+            // Create packets for seqNum 68..100 (inclusive)
+            std::vector<PacketInfo> data;
             for (uint16_t i = 68; i <= ack; ++i)
             {
-                PacketHeader ph;
-                ph.seqNum = i;
-                ph.acknowledged = false;
-                ph.sendTicks = steady_clock::now();
-                ph.receiveTicks = steady_clock::time_point{};
-                data.push_back(ph);
+                PacketInfo pi;
+                pi.seqNum = i;
+                pi.acknowledged = false;
+                pi.sendTicks = steady_clock::now();
+                pi.receiveTicks = steady_clock::time_point{};
+                data.push_back(pi);
             }
 
             // Set ackBits so that bits for 99, 97, 95 are set
@@ -82,17 +82,17 @@ namespace RocketServerTests
 
             // Assert
             auto sequence = { 100, 99, 97, 95 };
-            for (const PacketHeader& ph : data)
+            for (const PacketInfo& pi : data)
             {
                 // If packet is on from sequence, then it should be acknowledged
                 // else it should not be
-                if (std::find(sequence.begin(), sequence.end(), ph.seqNum) != sequence.end())
+                if (std::find(sequence.begin(), sequence.end(), pi.seqNum) != sequence.end())
                 {
-                    Assert::IsTrue(ph.acknowledged, L"These seqnums should be acknowledged");
+                    Assert::IsTrue(pi.acknowledged, L"These seqnums should be acknowledged");
                 }
                 else
                 {
-                    Assert::IsFalse(ph.acknowledged, L"Other packets should not be acknowledged");
+                    Assert::IsFalse(pi.acknowledged, L"Other packets should not be acknowledged");
                 }
             }
         }

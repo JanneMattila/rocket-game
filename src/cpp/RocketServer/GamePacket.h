@@ -15,7 +15,7 @@ struct Player
     uint8_t keyboard;
 };
 
-struct PacketHeader
+struct PacketInfo
 {
     uint64_t seqNum{};
     bool acknowledged{};
