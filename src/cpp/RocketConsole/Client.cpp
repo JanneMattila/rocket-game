@@ -1,6 +1,7 @@
 #include "Client.h"
 #include "NetworkPacketType.h"
 #include "Utils.h"
+#include <NetworkUtilities.h>
 
 static std::string addrToString(const sockaddr_in& addr) {
 	char buf[INET_ADDRSTRLEN];
@@ -29,23 +30,159 @@ int Client::Initialize(std::string server, int port)
 
 int Client::EstablishConnection()
 {
-	return m_network->EstablishConnection();
+    m_clientSalt = 0;
+    m_serverSalt = 0;
+    m_connectionSalt = 0;
+
+    uint64_t clientSalt = Utils::GetRandomNumberUInt64();
+    std::unique_ptr<NetworkPacket> networkPacket = std::make_unique<NetworkPacket>();
+
+    m_connectionState = NetworkConnectionState::CONNECTING;
+    networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CONNECTION_REQUEST));
+    networkPacket->WriteUInt64(clientSalt);
+
+    // Pad the packet to 1000 bytes
+    for (size_t i = 0; i < 1000
+        - sizeof(uint32_t) /* crc32 */
+        - sizeof(uint8_t) /* packet type */
+        - sizeof(uint64_t) /* client salt */; i++)
+    {
+        networkPacket->WriteInt8(0);
+    }
+
+    int result = 0;
+
+    m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Send connection request with client salt", { KV(clientSalt) });
+
+    if (m_network->Send(*networkPacket) != 0)
+    {
+        m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Failed to send connection request");
+        return 1;
+    }
+
+    m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Waiting for challenge");
+
+    // Sleep for a short period to allow the server to respond
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    sockaddr_in clientAddr{};
+    std::unique_ptr<NetworkPacket> challengePacket = m_network->Receive(clientAddr, result);
+
+    if (result != 0)
+    {
+        m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Timeout waiting for response to connection request");
+        return 1;
+    }
+
+    if (!m_network->IsServerAddress(clientAddr))
+    {
+        m_connectionState = NetworkConnectionState::DISCONNECTED;
+        m_logger->Log(LogLevel::WARNING, "EstablishConnection: Received data from unknown address");
+        return 1;
+    }
+
+    if (challengePacket->ReadAndValidateCRC())
+    {
+        m_connectionState = NetworkConnectionState::DISCONNECTED;
+        m_logger->Log(LogLevel::WARNING, "EstablishConnection: Packet validation failed");
+        return 1;
+    }
+
+    if (challengePacket->ReadNetworkPacketType() != NetworkPacketType::CHALLENGE)
+    {
+        m_connectionState = NetworkConnectionState::DISCONNECTED;
+        m_logger->Log(LogLevel::WARNING, "EstablishConnection: Invalid packet type");
+        return 1;
+    }
+
+    uint64_t receivedClientSalt = challengePacket->ReadUInt64();
+    uint64_t serverSalt = challengePacket->ReadUInt64();
+    m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Received challenge with client and server salt", { KV(receivedClientSalt), KV(serverSalt) });
+
+    if (receivedClientSalt != clientSalt)
+    {
+        m_connectionState = NetworkConnectionState::DISCONNECTED;
+        m_logger->Log(LogLevel::WARNING, "EstablishConnection: Client salt mismatch", { KV(clientSalt), KV(receivedClientSalt) });
+        return 1;
+    }
+
+    uint64_t connectionSalt = clientSalt ^ serverSalt;
+    networkPacket->Clear();
+
+    // Create a new packet with the connection salt
+    networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CHALLENGE_RESPONSE));
+    networkPacket->WriteUInt64(connectionSalt);
+    // Pad the packet to 1000 bytes
+    for (size_t i = 0; i < 1000
+        - sizeof(uint32_t) /* crc32 */
+        - sizeof(uint8_t) /* packet type */
+        - sizeof(uint64_t) /* connection salt */; i++)
+    {
+        networkPacket->WriteInt8(0);
+    }
+
+    m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Sending connection salt", { KV(connectionSalt) });
+
+    if (m_network->Send(*networkPacket) != 0)
+    {
+        m_connectionState = NetworkConnectionState::DISCONNECTED;
+        m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Failed to send challenge request");
+        return 1;
+    }
+
+    m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Waiting for challenge response");
+
+    // Sleep for a short period to allow the server to respond
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+
+    std::unique_ptr<NetworkPacket> challengeResponsePacket = m_network->Receive(clientAddr, result);
+
+    if (result != 0)
+    {
+        m_connectionState = NetworkConnectionState::DISCONNECTED;
+        m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Timeout waiting for response to challenge request");
+        return 1;
+    }
+
+    if (!m_network->IsServerAddress(clientAddr))
+    {
+        m_connectionState = NetworkConnectionState::DISCONNECTED;
+        m_logger->Log(LogLevel::WARNING, "EstablishConnection: Received data from unknown address");
+        return 1;
+    }
+
+    if (challengeResponsePacket->ReadAndValidateCRC())
+    {
+        m_connectionState = NetworkConnectionState::DISCONNECTED;
+        m_logger->Log(LogLevel::WARNING, "EstablishConnection: Challenge packet validation failed");
+        return 1;
+    }
+
+    if (challengeResponsePacket->ReadNetworkPacketType() != NetworkPacketType::CONNECTION_ACCEPTED)
+    {
+        m_connectionState = NetworkConnectionState::DISCONNECTED;
+        m_logger->Log(LogLevel::WARNING, "EstablishConnection: Connection was not accepted");
+        return 1;
+    }
+
+    m_connectionState = NetworkConnectionState::CONNECTED;
+    m_clientSalt = clientSalt;
+    m_serverSalt = serverSalt;
+    m_connectionSalt = clientSalt ^ serverSalt;
+    m_logger->Log(LogLevel::INFO, "EstablishConnection: Connected");
+
+    return 0;
 }
 
 int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 {
 	// Main loop
-	int8_t index = 0;
 	while (running)
 	{
 		sockaddr_in serverAddr{};
 		int result = 0;
 
-		NetworkPacket sendNetworkPacket;
-		sendNetworkPacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::GAME_STATE));
-		sendNetworkPacket.WriteInt8(1);
-		sendNetworkPacket.WriteInt8(index++);
-		m_network->Send(sendNetworkPacket);
+        SendGameState();
 
 		std::unique_ptr<NetworkPacket> networkPacket = m_network->Receive(serverAddr, result);
 		if (result == -1)
@@ -82,6 +219,7 @@ int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 		{
 		case NetworkPacketType::GAME_STATE:
 			m_logger->Log(LogLevel::DEBUG, "Game state packet received");
+            HandleGameState(std::move(networkPacket));
 			break;
 		case NetworkPacketType::DISCONNECT:
 			m_logger->Log(LogLevel::DEBUG, "Disconnect packet received");
@@ -94,6 +232,49 @@ int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 	}
 
 	return 0;
+}
+
+int Client::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket)
+{
+    int64_t connectionSalt = networkPacket->ReadUInt64();
+    if (m_connectionSalt != connectionSalt)
+    {
+        m_logger->Log(LogLevel::WARNING, "HandleGameState: Incorrect salt", { KV(m_connectionSalt), KV(connectionSalt)});
+        return 0;
+    }
+
+    int16_t seqNum = networkPacket->ReadInt16();
+    int16_t ack = networkPacket->ReadInt16();
+    int32_t ackBits = networkPacket->ReadInt32();
+
+    uint16_t diff = NetworkUtilities::SequenceNumberDiff(m_remoteSequenceNumberSmall, seqNum);
+    m_remoteSequenceNumberLarge += diff;
+    m_remoteSequenceNumberSmall = seqNum;
+
+    NetworkUtilities::StoreAcks(m_receivedPackets, m_remoteSequenceNumberLarge, ackBits);
+    return 1;
+}
+
+void Client::SendGameState()
+{
+    m_localSequenceNumberLarge++;
+    m_localSequenceNumberSmall = m_localSequenceNumberLarge % SEQUENCE_NUMBER_MAX;
+
+    uint32_t ackBits{};
+    NetworkUtilities::ComputeAckBits(m_receivedPackets, m_remoteSequenceNumberSmall, ackBits);
+
+    NetworkPacket sendNetworkPacket;
+    sendNetworkPacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::GAME_STATE));
+    sendNetworkPacket.WriteInt64(m_connectionSalt);
+    sendNetworkPacket.WriteInt16(m_localSequenceNumberSmall);
+    sendNetworkPacket.WriteInt16(m_remoteSequenceNumberSmall);
+    sendNetworkPacket.WriteInt32(ackBits);
+    m_network->Send(sendNetworkPacket);
+
+    PacketInfo pi;
+    pi.seqNum = m_localSequenceNumberLarge;
+    pi.sendTicks = std::chrono::steady_clock::now();
+    m_sendPackets.push_back(pi);
 }
 
 int Client::QuitGame()

@@ -1,6 +1,7 @@
 #include "Server.h"
 #include "NetworkPacketType.h"
 #include "Utils.h"
+#include "NetworkUtilities.h"
 
 static std::string addrToString(const sockaddr_in& addr) {
 	char buf[INET_ADDRSTRLEN];
@@ -108,13 +109,16 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 				continue;
 			}
 
-
 			if (HandleChallengeResponse(std::move(networkPacket), clientAddr) != 0)
 			{
 				continue;
 			}
 			break;
 		case NetworkPacketType::GAME_STATE:
+            if (HandleGameState(std::move(networkPacket), clientAddr) != 0)
+            {
+                continue;
+            }
 			break;
 		case NetworkPacketType::DISCONNECT:
 		{
@@ -175,7 +179,7 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 	player.ConnectionState = NetworkConnectionState::CONNECTING;
 	player.ClientSalt = clientSalt;
 	player.ServerSalt = serverSalt;
-	player.Salt = player.ClientSalt ^ player.ServerSalt;
+	player.ConnectionSalt = player.ClientSalt ^ player.ServerSalt;
 	player.PlayerID = playerID;
 	player.Address = clientAddr;
 	player.Created = std::chrono::steady_clock::now();
@@ -208,7 +212,7 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 		{
 			networkPacket->Clear();
 
-			if (player.Salt == salt)
+			if (player.ConnectionSalt == salt)
 			{
 				m_logger->Log(LogLevel::DEBUG, "HandleChallengeRequest: Player connection accepted", { KV(player.PlayerID) });
 
@@ -251,6 +255,32 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 
 	m_logger->Log(LogLevel::WARNING, "HandleChallengeRequest: Player not found");
 	return 1;
+}
+
+int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr)
+{
+    int64_t connectionSalt = networkPacket->ReadUInt64();
+
+    for (Player& player : m_players)
+    {
+        if (player.ConnectionSalt == connectionSalt)
+        {
+            int64_t connectionSalt = networkPacket->ReadUInt64();
+            int16_t seqNum = networkPacket->ReadInt16();
+            int16_t ack = networkPacket->ReadInt16();
+            int32_t ackBits = networkPacket->ReadInt32();
+
+            uint16_t diff = NetworkUtilities::SequenceNumberDiff(player.remoteSequenceNumberSmall, seqNum);
+            player.remoteSequenceNumberLarge += diff;
+            player.remoteSequenceNumberSmall = seqNum;
+            
+            NetworkUtilities::StoreAcks(player.receivedPackets, player.remoteSequenceNumberLarge, ackBits);
+            return 0;
+        }
+    }
+
+    m_logger->Log(LogLevel::WARNING, "HandleGameState: Player not found");
+    return 1;
 }
 
 int Server::QuitGame()

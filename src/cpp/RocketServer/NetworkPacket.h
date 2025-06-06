@@ -34,12 +34,14 @@ public:
     void Clear();
     void CalculateCRC();
     void WriteInt8(int8_t value);
+    void WriteInt16(int16_t value);
     void WriteInt32(int32_t value);
     void WriteInt64(int64_t value);
     void WriteUInt64(uint64_t value);
     void WriteKeyboard(uint8_t up, uint8_t down, uint8_t left, uint8_t right, uint8_t firing);
     NetworkPacketType ReadNetworkPacketType();
     int8_t ReadInt8();
+    int16_t ReadInt16();
     int32_t ReadInt32();
     uint64_t ReadUInt64();
     float ReadInt32ToFloat();

@@ -37,6 +37,13 @@ void NetworkPacket::WriteInt8(int8_t value)
 	m_buffer.insert(m_buffer.end(), value);
 }
 
+void NetworkPacket::WriteInt16(int16_t value)
+{
+    int16_t net = htons(value);
+    uint8_t* p = reinterpret_cast<uint8_t*>(&net);
+    m_buffer.insert(m_buffer.end(), p, p + sizeof(int16_t));
+}
+
 void NetworkPacket::WriteInt32(int32_t value)
 {
 	int32_t net = htonl(value);
@@ -71,20 +78,28 @@ int8_t NetworkPacket::ReadInt8()
 	return value;
 }
 
+int16_t NetworkPacket::ReadInt16()
+{
+    int16_t net = 0;
+    std::memcpy(&net, m_buffer.data() + m_offset, sizeof(int16_t));
+    m_offset += sizeof(int16_t);
+    return ntohs(net);
+}
+
+int32_t NetworkPacket::ReadInt32()
+{
+    int32_t net = 0;
+    std::memcpy(&net, m_buffer.data() + m_offset, sizeof(int32_t));
+    m_offset += sizeof(int32_t);
+    return ntohl(net);
+}
+
 uint64_t NetworkPacket::ReadUInt64()
 {
     uint64_t net = 0;
 	std::memcpy(&net, m_buffer.data() + m_offset, sizeof(uint64_t));
 	m_offset += sizeof(uint64_t);
 	return ntohll(net);
-}
-
-int32_t NetworkPacket::ReadInt32()
-{
-	int32_t net = 0;
-	std::memcpy(&net, m_buffer.data() + m_offset, sizeof(int32_t));
-	m_offset += sizeof(int32_t);
-	return ntohl(net);
 }
 
 float NetworkPacket::ReadInt32ToFloat()

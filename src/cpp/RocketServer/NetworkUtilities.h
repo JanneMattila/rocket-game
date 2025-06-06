@@ -1,9 +1,9 @@
 #pragma once
 #include <cstdint>
 #include <vector>
-#include <GamePacket.h>
 #include <chrono>
 #include <assert.h>
+#include "GamePacket.h"
 
 constexpr auto SEQUENCE_NUMBER_MAX = 65535;
 constexpr auto SEQUENCE_NUMBER_HALF = 32768;
@@ -25,7 +25,7 @@ public:
         return next - previous;
     }
 
-    static inline void BuildAckList(const std::vector<uint16_t>& data, const uint16_t& ack, uint32_t& ackBits)
+    static inline void ComputeAckBits(const std::vector<uint64_t>& data, const uint64_t& ack, uint32_t& ackBits)
     {
         ackBits = 0;
         if (data.empty())
@@ -35,9 +35,9 @@ public:
         }
 
         size_t idx = data.size() - 1;
-        uint16_t expected = static_cast<uint16_t>(ack - 1);
+        uint64_t expected = static_cast<uint64_t>(ack - 1);
 
-        for (int bit = 31; bit >= 0; bit--, expected = static_cast<uint16_t>(expected - 1))
+        for (int bit = 31; bit >= 0; bit--, expected = static_cast<uint64_t>(expected - 1))
         {
             while (idx > 0 && data[idx] > expected)
             {
@@ -46,6 +46,32 @@ public:
             if (idx >= 0 && data[idx] == expected)
             {
                 ackBits |= (1u << bit);
+            }
+        }
+    }
+
+    static inline void StoreAcks(std::vector<uint64_t>& data, const uint64_t& ack, const uint32_t& ackBits)
+    {
+        // Always include the main ack value
+        std::vector<uint64_t> acks;
+        acks.push_back(ack);
+
+        // Add values from ackBits
+        uint64_t expected = ack - 1;
+        for (int bit = 31; bit >= 0; --bit, --expected)
+        {
+            if (ackBits & (1u << bit))
+            {
+                acks.push_back(expected);
+            }
+        }
+
+        // Insert new acks into data if not already present
+        for (uint64_t seq : acks)
+        {
+            if (std::find(data.begin(), data.end(), seq) == data.end())
+            {
+                data.push_back(seq);
             }
         }
     }

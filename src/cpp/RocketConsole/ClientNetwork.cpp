@@ -69,7 +69,7 @@ static std::string GetNetworkErrorMessage(int errorCode)
 }
 #endif
 
-ClientNetwork::ClientNetwork(std::shared_ptr<Logger> logger) : m_logger(logger), m_socket(0), m_connectionSalt(0), m_servaddr{}
+ClientNetwork::ClientNetwork(std::shared_ptr<Logger> logger) : m_logger(logger), m_socket(0), m_serverAddr{}
 {
 }
 
@@ -121,160 +121,14 @@ int ClientNetwork::Initialize(std::string server, int port)
 	}
 #endif
 
-	m_servaddr.sin_family = AF_INET;
-	m_servaddr.sin_port = htons(port);
+	m_serverAddr.sin_family = AF_INET;
+	m_serverAddr.sin_port = htons(port);
 
-	if (inet_pton(AF_INET, server.c_str(), &m_servaddr.sin_addr) != 1)
+	if (inet_pton(AF_INET, server.c_str(), &m_serverAddr.sin_addr) != 1)
 	{
 		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to convert address", { KVS(server) });
 		return 1;
 	}
-
-	return 0;
-}
-
-int ClientNetwork::EstablishConnection()
-{
-    m_clientSalt = 0;
-    m_serverSalt = 0;
-    m_connectionSalt = 0;
-
-	uint64_t clientSalt = Utils::GetRandomNumberUInt64();
-	std::unique_ptr<NetworkPacket> networkPacket = std::make_unique<NetworkPacket>();
-
-	m_connectionState = NetworkConnectionState::CONNECTING;
-	networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CONNECTION_REQUEST));
-	networkPacket->WriteUInt64(clientSalt);
-
-	// Pad the packet to 1000 bytes
-	for (size_t i = 0; i < 1000 
-        - sizeof(uint32_t) /* crc32 */
-        - sizeof(uint8_t) /* packet type */
-        - sizeof(uint64_t) /* client salt */; i++)
-	{
-		networkPacket->WriteInt8(0);
-	}
-
-	int result = 0;
-
-    m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Send connection request with client salt", { KV(clientSalt) });
-
-	if (Send(*networkPacket) != 0)
-	{
-		m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Failed to send connection request");
-		return 1;
-	}
-
-	m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Waiting for challenge");
-
-    // Sleep for a short period to allow the server to respond
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-	sockaddr_in clientAddr{};
-    std::unique_ptr<NetworkPacket> challengePacket = Receive(clientAddr, result);
-
-	if (result != 0)
-	{
-		m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Timeout waiting for response to connection request");
-		return 1;
-	}
-
-    if (!IsServerAddress(clientAddr))
-    {
-        m_connectionState = NetworkConnectionState::DISCONNECTED;
-        m_logger->Log(LogLevel::WARNING, "EstablishConnection: Received data from unknown address");
-        return 1;
-    }
-
-	if (challengePacket->ReadAndValidateCRC())
-	{
-		m_connectionState = NetworkConnectionState::DISCONNECTED;
-		m_logger->Log(LogLevel::WARNING, "EstablishConnection: Packet validation failed");
-		return 1;
-	}
-
-	if (challengePacket->ReadNetworkPacketType() != NetworkPacketType::CHALLENGE)
-	{
-		m_connectionState = NetworkConnectionState::DISCONNECTED;
-		m_logger->Log(LogLevel::WARNING, "EstablishConnection: Invalid packet type");
-		return 1;
-	}
-
-	uint64_t receivedClientSalt = challengePacket->ReadUInt64();
-    uint64_t serverSalt = challengePacket->ReadUInt64();
-    m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Received challenge with client and server salt", { KV(receivedClientSalt), KV(serverSalt) });
-    
-    if (receivedClientSalt != clientSalt)
-	{
-		m_connectionState = NetworkConnectionState::DISCONNECTED;
-		m_logger->Log(LogLevel::WARNING, "EstablishConnection: Client salt mismatch", { KV(clientSalt), KV(receivedClientSalt) });
-		return 1;
-	}
-
-    uint64_t connectionSalt = clientSalt ^ serverSalt;
-	networkPacket->Clear();
-
-	// Create a new packet with the connection salt
-	networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CHALLENGE_RESPONSE));
-	networkPacket->WriteUInt64(connectionSalt);
-	// Pad the packet to 1000 bytes
-	for (size_t i = 0; i < 1000
-        - sizeof(uint32_t) /* crc32 */
-        - sizeof(uint8_t) /* packet type */
-        - sizeof(uint64_t) /* connection salt */; i++)
-	{
-		networkPacket->WriteInt8(0);
-	}
-
-    m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Sending connection salt", { KV(connectionSalt) });
-
-	if (Send(*networkPacket) != 0)
-	{
-		m_connectionState = NetworkConnectionState::DISCONNECTED;
-		m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Failed to send challenge request");
-		return 1;
-	}
-
-    m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Waiting for challenge response");
-
-    // Sleep for a short period to allow the server to respond
-    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-
-    std::unique_ptr<NetworkPacket> challengeResponsePacket = Receive(clientAddr, result);
-
-	if (result != 0)
-	{
-		m_connectionState = NetworkConnectionState::DISCONNECTED;
-		m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Timeout waiting for response to challenge request");
-		return 1;
-	}
-
-    if (!IsServerAddress(clientAddr))
-    {
-        m_connectionState = NetworkConnectionState::DISCONNECTED;
-        m_logger->Log(LogLevel::WARNING, "EstablishConnection: Received data from unknown address");
-        return 1;
-    }
-
-	if (challengeResponsePacket->ReadAndValidateCRC())
-	{
-		m_connectionState = NetworkConnectionState::DISCONNECTED;
-		m_logger->Log(LogLevel::WARNING, "EstablishConnection: Challenge packet validation failed");
-		return 1;
-	}
-
-	if (challengeResponsePacket->ReadNetworkPacketType() != NetworkPacketType::CONNECTION_ACCEPTED)
-	{
-		m_connectionState = NetworkConnectionState::DISCONNECTED;
-		m_logger->Log(LogLevel::WARNING, "EstablishConnection: Connection was not accepted");
-		return 1;
-	}
-
-	m_connectionState = NetworkConnectionState::CONNECTED;
-    m_clientSalt = clientSalt;
-    m_serverSalt = serverSalt;
-    m_connectionSalt = clientSalt ^ serverSalt;
-	m_logger->Log(LogLevel::INFO, "EstablishConnection: Connected");
 
 	return 0;
 }
@@ -356,7 +210,7 @@ int ClientNetwork::Send(NetworkPacket& networkPacket)
 	m_logger->Log(LogLevel::DEBUG, "Send: Sending bytes", { KV(size), KVS(bufferString) });
 #endif
 
-	if (sendto(m_socket, (char*)data.data(), (int)size, 0, (sockaddr*)&m_servaddr, sizeof(m_servaddr)) != size)
+	if (sendto(m_socket, (char*)data.data(), (int)size, 0, (sockaddr*)&m_serverAddr, sizeof(m_serverAddr)) != size)
 	{
 		auto errorCode = GetNetworkLastError();
 		std::string errorMsg = GetNetworkErrorMessage(errorCode);

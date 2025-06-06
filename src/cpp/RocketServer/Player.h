@@ -11,11 +11,12 @@
 #include <unistd.h>
 #endif
 #include "NetworkConnectionState.h"
+#include "GamePacket.h"
 
 struct Player {
 	uint64_t ClientSalt = 0;
 	uint64_t ServerSalt = 0;
-	uint64_t Salt = 0;
+	uint64_t ConnectionSalt = 0;
 	uint8_t PlayerID = 0;
 	sockaddr_in Address{};
 	NetworkConnectionState ConnectionState = NetworkConnectionState::DISCONNECTED;
@@ -30,4 +31,13 @@ struct Player {
 	float Rotation = 0;
 	float Speed = 0;
 	uint8_t IsFiring = 0;
+
+    std::vector<PacketInfo> sendPackets;
+    std::vector<uint64_t> receivedPackets;
+
+    uint64_t localSequenceNumberLarge = 0;
+    uint16_t localSequenceNumberSmall = 0;
+
+    uint64_t remoteSequenceNumberLarge = 0;
+    uint16_t remoteSequenceNumberSmall = 0;
 };

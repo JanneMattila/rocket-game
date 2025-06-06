@@ -12,8 +12,21 @@ private:
 	std::shared_ptr<Logger> m_logger;
 	std::unique_ptr<ClientNetwork> m_network;
 
+    uint64_t m_clientSalt = 0;
+    uint64_t m_serverSalt = 0;
+    uint64_t m_connectionSalt = 0;
+    NetworkConnectionState m_connectionState = NetworkConnectionState::DISCONNECTED;
+
+    std::vector<PacketInfo> m_sendPackets;
+    std::vector<uint64_t> m_receivedPackets;
+
 	std::vector<Player> m_players;
 	bool m_serverInitializedShutdown = false;
+    uint64_t m_localSequenceNumberLarge = 0;
+    uint16_t m_localSequenceNumberSmall = 0;
+
+    uint64_t m_remoteSequenceNumberLarge = 0;
+    uint16_t m_remoteSequenceNumberSmall = 0;
 
 public:
 	Client(std::shared_ptr<Logger> logger, std::unique_ptr<ClientNetwork> network);
@@ -23,6 +36,10 @@ public:
 	int EstablishConnection();
 
 	int ExecuteGame(volatile std::sig_atomic_t& running);
+
+	void SendGameState();
+    int HandleGameState(std::unique_ptr<NetworkPacket> networkPacket);
+
 
 	int QuitGame();
 };

@@ -8,7 +8,7 @@ struct Vector
     int y;
 };
 
-struct Player
+struct PlayerPacket
 {
     Vector pos;
     Vector vel;

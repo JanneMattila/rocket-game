@@ -89,11 +89,11 @@ namespace RocketServerTests
             // Arrange
             std::vector<uint16_t> before = { 100, 101, 103, 104 };
             uint16_t data = 102;
-            int expectedIndex = 2;
+            uint64_t expectedIndex = 2;
 
             // Act
             auto it = std::lower_bound(before.begin(), before.end(), data);
-            int actualIndex = std::distance(before.begin(), it);
+            uint64_t actualIndex = std::distance(before.begin(), it);
 
             // Assert
             Assert::AreEqual(expectedIndex, actualIndex, L"Validation should have failed");
