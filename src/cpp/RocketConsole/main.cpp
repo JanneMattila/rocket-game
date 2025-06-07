@@ -51,7 +51,7 @@ int main(int argc, char** argv)
 	g_logger = std::make_shared<Logger>();
 	g_logger->SetLogLevel(LogLevel::DEBUG);
 
-	std::cout << "Rocket Console" << std::endl;
+    g_logger->Log(LogLevel::INFO, "Rocket console starting");
 
 	std::string server = "127.0.0.1";
 	int udpPort = 3501;

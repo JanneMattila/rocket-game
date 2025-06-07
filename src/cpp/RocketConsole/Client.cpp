@@ -260,14 +260,16 @@ int Client::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket)
     else if (diff < 0)
     {
         // TODO: Add stats about out-of-order received packets
+        m_logger->Log(LogLevel::WARNING, "HandleGameState out-of-order packets");
     }
     else if (diff == 0)
     {
         // TODO: Add stats about duplicate received packets
+        m_logger->Log(LogLevel::WARNING, "HandleGameState duplicate packets");
     }
 
     diff = NetworkUtilities::SequenceNumberDiff(m_localSequenceNumberSmall, ack);
-    auto localSequenceNumberLarge = m_localSequenceNumberLarge + diff;
+    auto localSequenceNumberLarge = m_localSequenceNumberLarge - diff;
 
     NetworkUtilities::VerifyAck(m_sendPackets, localSequenceNumberLarge, ackBits);
 

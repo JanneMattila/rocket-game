@@ -192,7 +192,7 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 	networkPacket->WriteUInt64(clientSalt);
 	networkPacket->WriteUInt64(serverSalt);
 
-    m_logger->Log(LogLevel::WARNING, "HandleConnectionRequest: Sending challenge", { KV(clientSalt), KV(serverSalt) });
+    m_logger->Log(LogLevel::INFO, "HandleConnectionRequest: Sending challenge", { KV(clientSalt), KV(serverSalt) });
 
 	if (m_network->Send(*networkPacket, clientAddr) != 0)
 	{
@@ -281,14 +281,16 @@ int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockad
             else if (diff < 0)
             {
                 // TODO: Add stats about out-of-order received packets
+                m_logger->Log(LogLevel::WARNING, "HandleGameState out-of-order packets");
             }
             else if (diff == 0)
             {
                 // TODO: Add stats about duplicate received packets
+                m_logger->Log(LogLevel::WARNING, "HandleGameState duplicate packets");
             }
 
             diff = NetworkUtilities::SequenceNumberDiff(player.localSequenceNumberSmall, ack);
-            auto localSequenceNumberLarge = player.localSequenceNumberLarge + diff;
+            auto localSequenceNumberLarge = player.localSequenceNumberLarge - diff;
 
             NetworkUtilities::VerifyAck(player.sendPackets, localSequenceNumberLarge, ackBits);
 
