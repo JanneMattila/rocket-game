@@ -40,6 +40,5 @@ public:
 	void SendGameState();
     int HandleGameState(std::unique_ptr<NetworkPacket> networkPacket);
 
-
 	int QuitGame();
 };

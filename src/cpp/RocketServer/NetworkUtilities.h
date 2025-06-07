@@ -37,7 +37,7 @@ public:
         size_t idx = data.size() - 1;
         uint64_t expected = static_cast<uint64_t>(ack - 1);
 
-        for (int bit = 31; bit >= 0; bit--, expected = static_cast<uint64_t>(expected - 1))
+        for (int bit = 31; bit >= 0; bit--, expected--)
         {
             while (idx > 0 && data[idx] > expected)
             {
@@ -58,7 +58,7 @@ public:
 
         // Add values from ackBits
         uint64_t expected = ack - 1;
-        for (int bit = 31; bit >= 0; --bit, --expected)
+        for (int bit = 31; bit >= 0; bit--, expected--)
         {
             if (ackBits & (1u << bit))
             {
@@ -76,15 +76,19 @@ public:
         }
     }
 
-    static inline void VerifyAck(std::vector<PacketInfo>& data, const uint16_t& ack, uint32_t& ackBits)
+    static inline void VerifyAck(std::vector<PacketInfo>& data, const uint64_t& ack, uint32_t& ackBits)
     {
-        assert(data.size() != 0 && "Data cannot be empty when verifying acks");
+        if (data.size() == 0)
+        {
+            // Nothing to verify
+            return;
+        }
 
         size_t idx = data.size() - 1;
         bool isAck = true;
-        uint16_t expected = static_cast<uint16_t>(ack);
+        uint64_t expected = static_cast<uint64_t>(ack);
 
-        for (int bit = 31; bit >= 0; bit--, expected = static_cast<uint16_t>(expected - 1))
+        for (int bit = 31; bit >= 0; bit--, expected--)
         {
             while (idx > 0 && data[idx].seqNum > expected)
             {

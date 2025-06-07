@@ -243,15 +243,57 @@ int Client::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket)
         return 0;
     }
 
-    int16_t seqNum = networkPacket->ReadInt16();
-    int16_t ack = networkPacket->ReadInt16();
-    int32_t ackBits = networkPacket->ReadInt32();
+    uint16_t seqNum = networkPacket->ReadInt16();
+    uint16_t ack = networkPacket->ReadInt16();
+    uint32_t ackBits = networkPacket->ReadInt32();
 
     uint16_t diff = NetworkUtilities::SequenceNumberDiff(m_remoteSequenceNumberSmall, seqNum);
-    m_remoteSequenceNumberLarge += diff;
-    m_remoteSequenceNumberSmall = seqNum;
 
-    NetworkUtilities::StoreAcks(m_receivedPackets, m_remoteSequenceNumberLarge, ackBits);
+    if (diff > 0)
+    {
+        m_remoteSequenceNumberLarge += diff;
+        m_remoteSequenceNumberSmall = seqNum;
+
+        // TODO: This or NetworkUtilities::StoreAcks(...)
+        m_receivedPackets.push_back(m_remoteSequenceNumberLarge);
+    }
+    else if (diff < 0)
+    {
+        // TODO: Add stats about out-of-order received packets
+    }
+    else if (diff == 0)
+    {
+        // TODO: Add stats about duplicate received packets
+    }
+
+    NetworkUtilities::VerifyAck(m_sendPackets, m_remoteSequenceNumberLarge, ackBits);
+
+    // Clear all acknowledged packets away from send packets
+    m_sendPackets.erase(
+        std::remove_if(
+            m_sendPackets.begin(),
+            m_sendPackets.end(),
+            [this](const PacketInfo& pi) {
+                // Remove if acknowledged
+                return pi.acknowledged;
+            }
+        ),
+        m_sendPackets.end()
+    );
+
+    // Keep only 60 received packets
+    if (m_receivedPackets.size() > 60)
+    {
+        m_receivedPackets.erase(
+            m_receivedPackets.begin(),
+            m_receivedPackets.begin() + (m_receivedPackets.size() - 60)
+        );
+    }
+
+    auto sendPacketsRemaining = m_sendPackets.size();
+    auto receivedPacketsRemaining = m_receivedPackets.size();
+    m_logger->Log(LogLevel::DEBUG, "HandleGameState", { KV(m_remoteSequenceNumberLarge), KV(m_remoteSequenceNumberSmall), KV(sendPacketsRemaining), KV(receivedPacketsRemaining) });
+
     return 1;
 }
 
@@ -275,6 +317,8 @@ void Client::SendGameState()
     pi.seqNum = m_localSequenceNumberLarge;
     pi.sendTicks = std::chrono::steady_clock::now();
     m_sendPackets.push_back(pi);
+
+    m_logger->Log(LogLevel::DEBUG, "SendGameState", { KV(m_localSequenceNumberLarge), KV(m_localSequenceNumberSmall) });
 }
 
 int Client::QuitGame()
@@ -283,12 +327,14 @@ int Client::QuitGame()
 
 	if (!m_serverInitializedShutdown)
 	{
-		// Send disconnect packet to server
-		NetworkPacket sendNetworkPacket;
-		sendNetworkPacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::DISCONNECT));
-		sendNetworkPacket.WriteInt8(0);
-		sendNetworkPacket.WriteInt8(0);
-		m_network->Send(sendNetworkPacket);
+		// Send disconnect packets to server
+        for (size_t i = 0; i < 10; i++)
+        {
+            NetworkPacket sendNetworkPacket;
+            sendNetworkPacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::DISCONNECT));
+            sendNetworkPacket.WriteInt64(m_connectionSalt);
+            m_network->Send(sendNetworkPacket);
+        }
 	}
 	return 0;
 }

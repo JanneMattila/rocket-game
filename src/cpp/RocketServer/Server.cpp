@@ -265,16 +265,81 @@ int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockad
     {
         if (player.ConnectionSalt == connectionSalt)
         {
-            int64_t connectionSalt = networkPacket->ReadUInt64();
-            int16_t seqNum = networkPacket->ReadInt16();
-            int16_t ack = networkPacket->ReadInt16();
-            int32_t ackBits = networkPacket->ReadInt32();
+            uint64_t connectionSalt = networkPacket->ReadUInt64();
+            uint16_t seqNum = networkPacket->ReadInt16();
+            uint16_t ack = networkPacket->ReadInt16();
+            uint32_t ackBits = networkPacket->ReadInt32();
 
             uint16_t diff = NetworkUtilities::SequenceNumberDiff(player.remoteSequenceNumberSmall, seqNum);
-            player.remoteSequenceNumberLarge += diff;
-            player.remoteSequenceNumberSmall = seqNum;
-            
-            NetworkUtilities::StoreAcks(player.receivedPackets, player.remoteSequenceNumberLarge, ackBits);
+            if (diff > 0)
+            {
+                player.remoteSequenceNumberLarge += diff;
+                player.remoteSequenceNumberSmall = seqNum;
+
+                // TODO: This or NetworkUtilities::StoreAcks(...)
+                player.receivedPackets.push_back(player.remoteSequenceNumberLarge);
+            }
+            else if (diff < 0)
+            {
+                // TODO: Add stats about out-of-order received packets
+            }
+            else if (diff == 0)
+            {
+                // TODO: Add stats about duplicate received packets
+            }
+
+            NetworkUtilities::VerifyAck(player.sendPackets, player.remoteSequenceNumberLarge, ackBits);
+
+            // Clear all acknowledged packets away from send packets
+            player.sendPackets.erase(
+                std::remove_if(
+                    player.sendPackets.begin(),
+                    player.sendPackets.end(),
+                    [this](const PacketInfo& pi) {
+                        // Remove if acknowledged
+                        return pi.acknowledged;
+                    }
+                ),
+                player.sendPackets.end()
+            );
+
+            // Keep only 60 received packets
+            if (player.receivedPackets.size() > 60)
+            {
+                player.receivedPackets.erase(
+                    player.receivedPackets.begin(),
+                    player.receivedPackets.begin() + (player.receivedPackets.size() - 60)
+                );
+            }
+
+            auto sendPacketsRemaining = player.sendPackets.size();
+            auto receivedPacketsRemaining = player.receivedPackets.size();
+            m_logger->Log(LogLevel::DEBUG, "HandleGameState", { KV(player.remoteSequenceNumberLarge), KV(player.remoteSequenceNumberSmall), KV(sendPacketsRemaining), KV(receivedPacketsRemaining)  });
+
+            player.localSequenceNumberLarge++;
+            player.localSequenceNumberSmall = player.localSequenceNumberLarge % SEQUENCE_NUMBER_MAX;
+
+            ackBits = 0;
+            NetworkUtilities::ComputeAckBits(player.receivedPackets, player.remoteSequenceNumberLarge, ackBits);
+
+            player.localSequenceNumberSmall++;
+            player.localSequenceNumberSmall = player.localSequenceNumberLarge % SEQUENCE_NUMBER_MAX;
+
+            NetworkPacket sendNetworkPacket;
+            sendNetworkPacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::GAME_STATE));
+            sendNetworkPacket.WriteInt64(player.ConnectionSalt);
+            sendNetworkPacket.WriteInt16(player.localSequenceNumberSmall);
+            sendNetworkPacket.WriteInt16(player.remoteSequenceNumberSmall);
+            sendNetworkPacket.WriteInt32(ackBits);
+            m_network->Send(sendNetworkPacket, player.Address);
+
+            PacketInfo pi;
+            pi.seqNum = player.localSequenceNumberLarge;
+            pi.sendTicks = std::chrono::steady_clock::now();
+            player.sendPackets.push_back(pi);
+
+            m_logger->Log(LogLevel::DEBUG, "SendGameState", { KV(player.localSequenceNumberLarge), KV(player.localSequenceNumberSmall) });
+
             return 0;
         }
     }
