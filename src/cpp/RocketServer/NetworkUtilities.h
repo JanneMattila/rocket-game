@@ -96,7 +96,7 @@ public:
             }
             if (idx >= 0 && data[idx].seqNum == expected)
             {
-                if (!data[idx].acknowledged)
+                if (!data[idx].acknowledged && isAck)
                 {
                     // First acknowledgement time of the packet is relevant
                     data[idx].acknowledged = isAck;

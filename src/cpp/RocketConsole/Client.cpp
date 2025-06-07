@@ -177,12 +177,21 @@ int Client::EstablishConnection()
 int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 {
 	// Main loop
+    const auto tickInterval = std::chrono::duration<double>(1.0 / 60.0); // 1/60 second
+    auto lastTick = std::chrono::steady_clock::now();
+
 	while (running)
 	{
 		sockaddr_in serverAddr{};
 		int result = 0;
 
-        SendGameState();
+        auto current = std::chrono::steady_clock::now();
+        auto elapsed = current - lastTick;
+        if (elapsed >= tickInterval)
+        {
+            SendGameState();
+            lastTick = current;
+        }
 
 		std::unique_ptr<NetworkPacket> networkPacket = m_network->Receive(serverAddr, result);
 		if (result == -1)
