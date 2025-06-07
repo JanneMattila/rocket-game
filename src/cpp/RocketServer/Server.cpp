@@ -263,9 +263,8 @@ int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockad
 
     for (Player& player : m_players)
     {
-        if (player.ConnectionSalt == connectionSalt)
+        if (player.ConnectionSalt == connectionSalt && player.Address == clientAddr)
         {
-            uint64_t connectionSalt = networkPacket->ReadUInt64();
             uint16_t seqNum = networkPacket->ReadInt16();
             uint16_t ack = networkPacket->ReadInt16();
             uint32_t ackBits = networkPacket->ReadInt32();
@@ -288,7 +287,10 @@ int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockad
                 // TODO: Add stats about duplicate received packets
             }
 
-            NetworkUtilities::VerifyAck(player.sendPackets, player.remoteSequenceNumberLarge, ackBits);
+            diff = NetworkUtilities::SequenceNumberDiff(player.localSequenceNumberSmall, ack);
+            auto localSequenceNumberLarge = player.localSequenceNumberLarge + diff;
+
+            NetworkUtilities::VerifyAck(player.sendPackets, localSequenceNumberLarge, ackBits);
 
             // Clear all acknowledged packets away from send packets
             player.sendPackets.erase(
@@ -316,13 +318,10 @@ int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockad
             auto receivedPacketsRemaining = player.receivedPackets.size();
             m_logger->Log(LogLevel::DEBUG, "HandleGameState", { KV(player.remoteSequenceNumberLarge), KV(player.remoteSequenceNumberSmall), KV(sendPacketsRemaining), KV(receivedPacketsRemaining)  });
 
-            player.localSequenceNumberLarge++;
-            player.localSequenceNumberSmall = player.localSequenceNumberLarge % SEQUENCE_NUMBER_MAX;
-
             ackBits = 0;
             NetworkUtilities::ComputeAckBits(player.receivedPackets, player.remoteSequenceNumberLarge, ackBits);
 
-            player.localSequenceNumberSmall++;
+            player.localSequenceNumberLarge++;
             player.localSequenceNumberSmall = player.localSequenceNumberLarge % SEQUENCE_NUMBER_MAX;
 
             NetworkPacket sendNetworkPacket;

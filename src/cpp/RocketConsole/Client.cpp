@@ -266,7 +266,10 @@ int Client::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket)
         // TODO: Add stats about duplicate received packets
     }
 
-    NetworkUtilities::VerifyAck(m_sendPackets, m_remoteSequenceNumberLarge, ackBits);
+    diff = NetworkUtilities::SequenceNumberDiff(m_localSequenceNumberSmall, ack);
+    auto localSequenceNumberLarge = m_localSequenceNumberLarge + diff;
+
+    NetworkUtilities::VerifyAck(m_sendPackets, localSequenceNumberLarge, ackBits);
 
     // Clear all acknowledged packets away from send packets
     m_sendPackets.erase(
