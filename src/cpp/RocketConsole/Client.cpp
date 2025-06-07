@@ -180,6 +180,8 @@ int Client::ExecuteGame(volatile std::sig_atomic_t& running)
     const auto tickInterval = std::chrono::duration<double>(1.0 / 60.0); // 1/60 second
     auto lastTick = std::chrono::steady_clock::now();
 
+    // TODO: Add timer to send stats to server every 10 seconds
+
 	while (running)
 	{
 		sockaddr_in serverAddr{};
@@ -283,17 +285,33 @@ int Client::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket)
     NetworkUtilities::VerifyAck(m_sendPackets, localSequenceNumberLarge, ackBits);
 
     // Clear all acknowledged packets away from send packets
+    int acknowledgedCount = 0;
+    std::chrono::steady_clock::duration roundTripTime{};
     m_sendPackets.erase(
         std::remove_if(
             m_sendPackets.begin(),
             m_sendPackets.end(),
-            [this](const PacketInfo& pi) {
+            [this, &acknowledgedCount, &roundTripTime](const PacketInfo& pi) {
                 // Remove if acknowledged
+                acknowledgedCount++;
+                roundTripTime = pi.roundTripTime;
                 return pi.acknowledged;
             }
         ),
         m_sendPackets.end()
     );
+
+    // Average round trip time
+    if (acknowledgedCount > 0)
+    {
+        roundTripTime /= acknowledgedCount;
+        auto roundTripTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(roundTripTime).count();
+        m_logger->Log(LogLevel::INFO, "HandleGameState: Average round trip time in ms", { KV(roundTripTimeMs), KV(acknowledgedCount)});
+    }
+    else
+    {
+        m_logger->Log(LogLevel::DEBUG, "HandleGameState: No packets acknowledged");
+    }
 
     // Keep only 60 received packets
     if (m_receivedPackets.size() > 60)
