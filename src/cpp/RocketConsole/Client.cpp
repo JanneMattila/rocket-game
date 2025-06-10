@@ -164,9 +164,11 @@ int Client::EstablishConnection()
 int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 {
 	// Main loop
-    const auto tickInterval = std::chrono::duration<double>(1.0 / 60.0); // 1/60 second
-    auto lastTick = std::chrono::steady_clock::now();
+    const auto gameUpdateInterval = std::chrono::duration<double>(1.0 / 60.0); // 1/60 second
+    auto gameUpdateTime = std::chrono::steady_clock::now();
 
+    int idleTime = 0;
+    auto idle = std::chrono::steady_clock::now();
     // TODO: Add timer to send stats to server every 10 seconds
 
 	while (running)
@@ -175,19 +177,32 @@ int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 		int result = 0;
 
         auto current = std::chrono::steady_clock::now();
-        auto elapsed = current - lastTick;
-        if (elapsed >= tickInterval)
+        auto elapsed = current - gameUpdateTime;
+        if (elapsed >= gameUpdateInterval)
         {
             SendGameState();
-            lastTick = current;
+            gameUpdateTime = current;
         }
 
 		std::unique_ptr<NetworkPacket> networkPacket = m_network->Receive(serverAddr, result);
 		if (result == -1)
 		{
-			m_logger->Log(LogLevel::DEBUG, "Waiting for data");
+            auto now = std::chrono::steady_clock::now();
+            if (std::chrono::duration_cast<std::chrono::milliseconds>(now - idle).count() >= 5000 /* 5 seconds */)
+            {
+                idle = now;
+                m_logger->Log(LogLevel::DEBUG, "Waiting for data");
+                idleTime++;
+                if (idleTime > 20)
+                {
+                    m_logger->Log(LogLevel::INFO, "No data received for a while, exiting");
+                    running = 0;
+                }
+            }
+
 			continue;
 		}
+
 		if (result != 0)
 		{
 			m_logger->Log(LogLevel::DEBUG, "Failed to receive data");
@@ -213,7 +228,12 @@ int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 			continue;
 		}
 
-		switch (networkPacket->ReadNetworkPacketType())
+        idleTime = 0;
+        NetworkPacketType packetType = networkPacket->ReadNetworkPacketType();
+        auto packetTypeInt = static_cast<int>(packetType);
+        m_logger->Log(LogLevel::DEBUG, "Received packet type", { KV(packetTypeInt) });
+
+		switch (packetType)
 		{
 		case NetworkPacketType::GAME_STATE:
 			m_logger->Log(LogLevel::DEBUG, "Game state packet received");
@@ -281,7 +301,7 @@ int Client::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket)
             [this, &acknowledgedCount, &roundTripTime](const PacketInfo& pi) {
                 // Remove if acknowledged
                 acknowledgedCount++;
-                roundTripTime = pi.roundTripTime;
+                roundTripTime += pi.roundTripTime;
                 return pi.acknowledged;
             }
         ),

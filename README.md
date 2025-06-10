@@ -42,5 +42,5 @@ docker push "$acrName.azurecr.io/$imageServer"
 docker push "$acrName.azurecr.io/$imageConsole"
 
 # Deploy to ACI
-az container create --resource-group $resourceGroup --name "$imageServer" --image "$acrName.azurecr.io/$imageServer" --cpu 1 --memory 1 --registry-login-server "$acrName.azurecr.io" --registry-username $acrName --registry-password $acrPassword --ports 3501 --protocol UDP --ip-address public --restart-policy OnFailure --os-type linux
+az container create --resource-group $resourceGroup --name "$imageServer" --image "$acrName.azurecr.io/$imageServer" --cpu 1 --memory 1 --registry-login-server "$acrName.azurecr.io" --registry-username $acrName --registry-password $acrPassword --ports 3501 --protocol UDP --ip-address public --restart-policy Never --os-type linux
 ```
