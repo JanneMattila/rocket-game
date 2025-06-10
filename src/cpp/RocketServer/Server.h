@@ -4,7 +4,7 @@
 #include <csignal>
 #include "Player.h"
 #include "Logger.h"
-#include "ServerNetworkBase.h"
+#include "NetworkBase.h"
 
 class Server
 {
@@ -12,12 +12,12 @@ private:
 	static constexpr int8_t MAX_PLAYERS = 8;
 
 	std::shared_ptr<Logger> m_logger;
-	std::shared_ptr<ServerNetworkBase> m_network;
+	std::shared_ptr<NetworkBase> m_network;
 
 	std::vector<Player> m_players;
 
 public:
-	Server(std::shared_ptr<Logger> logger, std::shared_ptr<ServerNetworkBase> network);
+	Server(std::shared_ptr<Logger> logger, std::shared_ptr<NetworkBase> network);
 	~Server();
 
 	int Initialize(int port);

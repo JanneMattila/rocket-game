@@ -33,9 +33,14 @@ docker run -it --rm --name $imageConsole "$acrName.azurecr.io/$imageConsole"
 # Login to ACR
 az acr login --name $acrName
 
-# Push image
-docker push "$acrName.azurecr.io/$image"
+# Build images in ACR
+az acr build --registry $acrName --image "$imageServer" ./src/cpp/RocketServer
+az acr build --registry $acrName --image "$imageConsole" ./src/cpp/RocketConsole
+
+# Push images
+docker push "$acrName.azurecr.io/$imageServer"
+docker push "$acrName.azurecr.io/$imageConsole"
 
 # Deploy to ACI
-az container create --resource-group $resourceGroup --name $image --image "$acrName.azurecr.io/$image" --cpu 1 --memory 1 --registry-login-server "$acrName.azurecr.io" --registry-username $acrName --registry-password $acrPassword --ports 3501 --protocol UDP --ip-address public --restart-policy OnFailure --os-type linux
+az container create --resource-group $resourceGroup --name "$imageServer" --image "$acrName.azurecr.io/$imageServer" --cpu 1 --memory 1 --registry-login-server "$acrName.azurecr.io" --registry-username $acrName --registry-password $acrPassword --ports 3501 --protocol UDP --ip-address public --restart-policy OnFailure --os-type linux
 ```

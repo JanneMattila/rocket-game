@@ -108,4 +108,18 @@ public:
             isAck = (ackBits & (1u << bit)) != 0;
         }
     }
+
+    static inline bool IsSameAddress(const sockaddr_in& left, const sockaddr_in& right)
+    {
+        return (left.sin_family == right.sin_family &&
+            left.sin_addr.s_addr == right.sin_addr.s_addr &&
+            left.sin_port == right.sin_port);
+    }
+
+    static std::string AddressToString(const sockaddr_in& addr)
+    {
+        char buf[INET_ADDRSTRLEN];
+        inet_ntop(AF_INET, &addr.sin_addr, buf, sizeof(buf));
+        return std::string(buf) + ":" + std::to_string(ntohs(addr.sin_port));
+    }
 };

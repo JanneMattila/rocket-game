@@ -3,10 +3,10 @@
 #include <string>
 #include <iostream>
 #include <functional>
-#include "ServerNetworkBase.h"
+#include "NetworkBase.h"
 #include "Logger.h"
 
-class ServerNetworkStub : public ServerNetworkBase
+class NetworkStub : public NetworkBase
 {
 private:
 	struct sockaddr_in m_servaddr {};
@@ -23,7 +23,7 @@ public:
 
 	std::function<int(NetworkPacket&, sockaddr_in&)> SendCaptureCallback;
 
-	int Initialize(int port) override
+	int Initialize(std::string server, int port, sockaddr_in& addr) override
 	{
 		if (InitializeReturnValues.empty())
 		{

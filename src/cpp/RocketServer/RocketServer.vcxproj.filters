@@ -27,7 +27,7 @@
     <ClCompile Include="GamePacket.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ServerNetwork.cpp">
+    <ClCompile Include="Network.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Utils.cpp">
@@ -74,10 +74,10 @@
     <ClInclude Include="NetworkConnectionState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ServerNetwork.h">
+    <ClInclude Include="Network.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="ServerNetworkBase.h">
+    <ClInclude Include="NetworkBase.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="NetworkUtilities.h">

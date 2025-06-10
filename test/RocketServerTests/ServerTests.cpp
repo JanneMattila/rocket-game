@@ -54,7 +54,7 @@ namespace RocketServerTests
 		TEST_METHOD(Initialization_Succeed_Test)
 		{
 			// Arrange
-			std::unique_ptr<ServerNetworkStub> network = std::make_unique<ServerNetworkStub>();
+			std::unique_ptr<NetworkStub> network = std::make_unique<NetworkStub>();
 			std::unique_ptr<Server> server = std::make_unique<Server>(std::make_shared<::Logger>(), std::move(network));
 			int expected = 0; // Expected return value for successful initialization
 
@@ -67,7 +67,7 @@ namespace RocketServerTests
 		TEST_METHOD(Initialization_Failed_Test)
 		{
 			// Arrange
-			std::unique_ptr<ServerNetworkStub> network = std::make_unique<ServerNetworkStub>();
+			std::unique_ptr<NetworkStub> network = std::make_unique<NetworkStub>();
 			network->InitializeReturnValues = { 1 };  // Return error code 1
 			std::unique_ptr<Server> server = std::make_unique<Server>(std::make_shared<::Logger>(), std::move(network));
 			int expected = 1; // Expected return value for failed initialization
@@ -82,7 +82,7 @@ namespace RocketServerTests
 		TEST_METHOD(Connection_Request_Test)
 		{
 			// Arrange
-			std::shared_ptr<ServerNetworkStub> network = std::make_shared<ServerNetworkStub>();
+			std::shared_ptr<NetworkStub> network = std::make_shared<NetworkStub>();
 			const int64_t CLIENT_SALT = 0x1234567890ABCDEF;
 			std::unique_ptr<NetworkPacket> connectionRequestPacket = CreateConnectionPacket(NetworkPacketType::CONNECTION_REQUEST, CLIENT_SALT);
 			auto server = std::make_unique<Server>(std::make_shared<::Logger>(), network);

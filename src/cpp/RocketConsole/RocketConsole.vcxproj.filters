@@ -27,9 +27,6 @@
     <ClCompile Include="Client.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ClientNetwork.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="..\RocketServer\NetworkPacket.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
@@ -45,12 +42,12 @@
     <ClCompile Include="..\RocketServer\Utils.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\RocketServer\Network.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Client.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="ClientNetwork.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

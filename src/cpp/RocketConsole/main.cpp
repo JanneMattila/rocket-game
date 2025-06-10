@@ -2,9 +2,8 @@
 #include <cstring>
 #include <chrono>
 #include <thread>
-#include "ClientNetwork.h"
-#include "Client.h"
 #include <csignal>
+#include "Client.h"
 
 static std::string GetEnvVariable(const char* varName) {
 	std::string result;
@@ -80,7 +79,7 @@ int main(int argc, char** argv)
 
 	g_logger->Log(LogLevel::INFO, "UDP Server", { KVS(server), KV(udpPort) });
 
-	std::unique_ptr<ClientNetwork> network = std::make_unique<ClientNetwork>(g_logger);
+	std::unique_ptr<Network> network = std::make_unique<Network>(g_logger);
 	g_client = std::make_unique<Client>(g_logger, std::move(network));
 
 	if (g_client->Initialize(server, udpPort) != 0)

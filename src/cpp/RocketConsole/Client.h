@@ -4,18 +4,19 @@
 #include <csignal>
 #include "Player.h"
 #include "Logger.h"
-#include "ClientNetwork.h"
+#include "Network.h"
 
 class Client
 {
 private:
 	std::shared_ptr<Logger> m_logger;
-	std::unique_ptr<ClientNetwork> m_network;
+	std::unique_ptr<Network> m_network;
 
     uint64_t m_clientSalt = 0;
     uint64_t m_serverSalt = 0;
     uint64_t m_connectionSalt = 0;
     NetworkConnectionState m_connectionState = NetworkConnectionState::DISCONNECTED;
+    struct sockaddr_in m_serverAddr {};
 
     std::vector<PacketInfo> m_sendPackets;
     std::vector<uint64_t> m_receivedPackets;
@@ -29,7 +30,7 @@ private:
     uint16_t m_remoteSequenceNumberSmall = 0;
 
 public:
-	Client(std::shared_ptr<Logger> logger, std::unique_ptr<ClientNetwork> network);
+	Client(std::shared_ptr<Logger> logger, std::unique_ptr<Network> network);
 	~Client();
 
 	int Initialize(std::string server, int port);

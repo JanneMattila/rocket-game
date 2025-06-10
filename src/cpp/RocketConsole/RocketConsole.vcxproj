@@ -152,15 +152,14 @@
     <ClCompile Include="..\RocketServer\CRC32.cpp" />
     <ClCompile Include="..\RocketServer\GamePacket.cpp" />
     <ClCompile Include="..\RocketServer\Logger.cpp" />
+    <ClCompile Include="..\RocketServer\Network.cpp" />
     <ClCompile Include="..\RocketServer\NetworkPacket.cpp" />
     <ClCompile Include="..\RocketServer\Utils.cpp" />
     <ClCompile Include="Client.cpp" />
-    <ClCompile Include="ClientNetwork.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Client.h" />
-    <ClInclude Include="ClientNetwork.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RocketServer\RocketServer.vcxproj">

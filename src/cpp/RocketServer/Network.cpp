@@ -1,7 +1,7 @@
 #include <random>
 #include <cstdint>
 #include <algorithm> 
-#include "ServerNetwork.h"
+#include "Network.h"
 #include "NetworkPacketType.h"
 #include "Utils.h"
 
@@ -60,7 +60,8 @@ static inline int GetNetworkLastError()
 }
 static std::string GetNetworkErrorMessage(int errorCode)
 {
-	auto message = std::strerror(errorCode);
+	auto messageCStr = std::strerror(errorCode);
+    std::string message(messageCStr);
 
 	std::ranges::replace(message, '\r', ' ');
 	std::ranges::replace(message, '\n', ' ');
@@ -70,11 +71,11 @@ static std::string GetNetworkErrorMessage(int errorCode)
 }
 #endif
 
-ServerNetwork::ServerNetwork(std::shared_ptr<Logger> logger) : m_logger(logger), m_socket(0), m_servaddr{}
+Network::Network(std::shared_ptr<Logger> logger) : m_logger(logger), m_socket(0)
 {
 }
 
-ServerNetwork::~ServerNetwork()
+Network::~Network()
 {
 	// Close the socket and cleanup
 #ifdef _WIN32
@@ -85,7 +86,7 @@ ServerNetwork::~ServerNetwork()
 #endif
 }
 
-int ServerNetwork::Initialize(int port)
+int Network::Initialize(std::string server, int port, sockaddr_in& addr)
 {
 #ifdef _WIN32
 	WSADATA wsaData;
@@ -127,7 +128,7 @@ int ServerNetwork::Initialize(int port)
 	{
 		auto errorCode = GetNetworkLastError();
 		std::string errorMsg = GetNetworkErrorMessage(errorCode);
-		m_logger->Log2(
+		m_logger->Log(
 			LogLevel::EXCEPTION,
 			"Initialize: Failed to set socket to non-blocking",
 			{ KV(errorCode), KVS(errorMsg) }
@@ -136,23 +137,37 @@ int ServerNetwork::Initialize(int port)
 	}
 #endif
 
-	m_servaddr.sin_family = AF_INET;
-	m_servaddr.sin_port = htons(port);
-	m_servaddr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(port);
 
-	m_logger->Log(LogLevel::INFO, "Initialize: Binding on port", { KV(port) });
-	if (bind(m_socket, (sockaddr*)&m_servaddr, sizeof(m_servaddr)) < 0)
-	{
-		m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to bind socket on port", { KV(port) });
-		return 1;
-	}
+    if (server.empty())
+    {
+        // Server
+        addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-	m_logger->Log(LogLevel::INFO, "Initialize: Successfully bound on port", { KV(port) });
+        m_logger->Log(LogLevel::INFO, "Initialize: Binding on port", { KV(port) });
+        if (bind(m_socket, (sockaddr*)&addr, sizeof(addr)) < 0)
+        {
+            m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to bind socket on port", { KV(port) });
+            return 1;
+        }
 
+        m_logger->Log(LogLevel::INFO, "Initialize: Successfully bound on port", { KV(port) });
+    }
+    else
+    {
+        // Client
+
+        if (inet_pton(AF_INET, server.c_str(), &addr.sin_addr) != 1)
+        {
+            m_logger->Log(LogLevel::EXCEPTION, "Initialize: Failed to convert address", { KVS(server) });
+            return 1;
+        }
+    }
 	return 0;
 }
 
-std::unique_ptr<NetworkPacket> ServerNetwork::Receive(sockaddr_in& clientAddr, int& result)
+std::unique_ptr<NetworkPacket> Network::Receive(sockaddr_in& clientAddr, int& result)
 {
 	// Resize the vector to the maximum buffer size
 	std::vector<uint8_t> data(1024);
@@ -216,7 +231,7 @@ std::unique_ptr<NetworkPacket> ServerNetwork::Receive(sockaddr_in& clientAddr, i
 	return std::make_unique<NetworkPacket>(data);
 }
 
-int ServerNetwork::Send(NetworkPacket& networkPacket, sockaddr_in& clientAddr)
+int Network::Send(NetworkPacket& networkPacket, sockaddr_in& clientAddr)
 {
 	networkPacket.CalculateCRC();
 

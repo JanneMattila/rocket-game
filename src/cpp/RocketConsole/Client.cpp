@@ -3,20 +3,7 @@
 #include "Utils.h"
 #include <NetworkUtilities.h>
 
-static std::string addrToString(const sockaddr_in& addr) {
-	char buf[INET_ADDRSTRLEN];
-	inet_ntop(AF_INET, &addr.sin_addr, buf, sizeof(buf));
-	return std::string(buf) + ":" + std::to_string(ntohs(addr.sin_port));
-}
-
-static bool operator==(const sockaddr_in& a, const sockaddr_in& b) {
-	return a.sin_family == b.sin_family &&
-		a.sin_addr.s_addr == b.sin_addr.s_addr &&
-		a.sin_port == b.sin_port;
-}
-
-
-Client::Client(std::shared_ptr<Logger> logger, std::unique_ptr<ClientNetwork> network)
+Client::Client(std::shared_ptr<Logger> logger, std::unique_ptr<Network> network)
 	: m_logger(logger), m_network(std::move(network)) {
 }
 
@@ -25,7 +12,7 @@ Client::~Client() {
 
 int Client::Initialize(std::string server, int port)
 {
-	return m_network->Initialize(server, port);
+	return m_network->Initialize(server, port, m_serverAddr);
 }
 
 int Client::EstablishConnection()
@@ -54,7 +41,7 @@ int Client::EstablishConnection()
 
     m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Send connection request with client salt", { KV(clientSalt) });
 
-    if (m_network->Send(*networkPacket) != 0)
+    if (m_network->Send(*networkPacket, m_serverAddr) != 0)
     {
         m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Failed to send connection request");
         return 1;
@@ -74,7 +61,7 @@ int Client::EstablishConnection()
         return 1;
     }
 
-    if (!m_network->IsServerAddress(clientAddr))
+    if (!NetworkUtilities::IsSameAddress(clientAddr, m_serverAddr))
     {
         m_connectionState = NetworkConnectionState::DISCONNECTED;
         m_logger->Log(LogLevel::WARNING, "EstablishConnection: Received data from unknown address");
@@ -123,7 +110,7 @@ int Client::EstablishConnection()
 
     m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Sending connection salt", { KV(connectionSalt) });
 
-    if (m_network->Send(*networkPacket) != 0)
+    if (m_network->Send(*networkPacket, m_serverAddr) != 0)
     {
         m_connectionState = NetworkConnectionState::DISCONNECTED;
         m_logger->Log(LogLevel::DEBUG, "EstablishConnection: Failed to send challenge request");
@@ -144,7 +131,7 @@ int Client::EstablishConnection()
         return 1;
     }
 
-    if (!m_network->IsServerAddress(clientAddr))
+    if (!NetworkUtilities::IsSameAddress(clientAddr, m_serverAddr))
     {
         m_connectionState = NetworkConnectionState::DISCONNECTED;
         m_logger->Log(LogLevel::WARNING, "EstablishConnection: Received data from unknown address");
@@ -207,7 +194,7 @@ int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 			continue;
 		}
 
-		if (!m_network->IsServerAddress(serverAddr))
+		if (!NetworkUtilities::IsSameAddress(serverAddr, m_serverAddr))
 		{
 			m_logger->Log(LogLevel::DEBUG, "Received data from unknown address");
 			continue;
@@ -343,7 +330,7 @@ void Client::SendGameState()
     sendNetworkPacket.WriteInt16(m_localSequenceNumberSmall);
     sendNetworkPacket.WriteInt16(m_remoteSequenceNumberSmall);
     sendNetworkPacket.WriteInt32(ackBits);
-    m_network->Send(sendNetworkPacket);
+    m_network->Send(sendNetworkPacket, m_serverAddr);
 
     PacketInfo pi;
     pi.seqNum = m_localSequenceNumberLarge;
@@ -365,7 +352,7 @@ int Client::QuitGame()
             NetworkPacket sendNetworkPacket;
             sendNetworkPacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::DISCONNECT));
             sendNetworkPacket.WriteInt64(m_connectionSalt);
-            m_network->Send(sendNetworkPacket);
+            m_network->Send(sendNetworkPacket, m_serverAddr);
         }
 	}
 	return 0;

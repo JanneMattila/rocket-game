@@ -42,9 +42,6 @@
     <ClCompile Include="..\..\src\cpp\RocketServer\main.cpp">
       <Filter>RocketServer</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\cpp\RocketServer\ServerNetwork.cpp">
-      <Filter>RocketServer</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\cpp\RocketServer\Utils.cpp">
       <Filter>RocketServer</Filter>
     </ClCompile>
@@ -59,6 +56,9 @@
     </ClCompile>
     <ClCompile Include="AckTests.cpp">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cpp\RocketServer\Network.cpp">
+      <Filter>RocketServer</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

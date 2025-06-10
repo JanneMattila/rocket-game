@@ -3,20 +3,7 @@
 #include "Utils.h"
 #include "NetworkUtilities.h"
 
-static std::string addrToString(const sockaddr_in& addr) {
-	char buf[INET_ADDRSTRLEN];
-	inet_ntop(AF_INET, &addr.sin_addr, buf, sizeof(buf));
-	return std::string(buf) + ":" + std::to_string(ntohs(addr.sin_port));
-}
-
-static bool operator==(const sockaddr_in& a, const sockaddr_in& b) {
-	return a.sin_family == b.sin_family &&
-		a.sin_addr.s_addr == b.sin_addr.s_addr &&
-		a.sin_port == b.sin_port;
-}
-
-
-Server::Server(std::shared_ptr<Logger> logger, std::shared_ptr<ServerNetworkBase> network)
+Server::Server(std::shared_ptr<Logger> logger, std::shared_ptr<NetworkBase> network)
 	: m_logger(logger), m_network(network) {
 }
 
@@ -25,7 +12,8 @@ Server::~Server() {
 
 int Server::Initialize(int port)
 {
-	return m_network->Initialize(port);
+    sockaddr_in addr{};
+	return m_network->Initialize("" /* server*/, port, addr);
 }
 
 int Server::ExecuteGame(volatile std::sig_atomic_t& running)
@@ -65,7 +53,7 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 		}
 
 		idleTime = 0;
-		std::string address = addrToString(clientAddr);
+		std::string address = NetworkUtilities::AddressToString(clientAddr);
 		size_t size = networkPacket->Size();
 
 		m_logger->Log(LogLevel::DEBUG, "Received bytes from client", { KV(size), KVS(address) });
@@ -137,8 +125,8 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 	// Check if the client is already connected
 	int playerID = 0;
 
-	for (const Player& player : m_players) {
-		if (player.Address == clientAddr) {
+	for (Player& player : m_players) {
+		if (NetworkUtilities::IsSameAddress(player.Address, clientAddr)) {
 			m_logger->Log(LogLevel::DEBUG, "Client has already started connection request", { KV(player.PlayerID) });
 			playerID = player.PlayerID;
 			break;
@@ -208,7 +196,7 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 
 	for (Player& player : m_players)
 	{
-		if (player.Address == clientAddr)
+		if (NetworkUtilities::IsSameAddress(player.Address, clientAddr))
 		{
 			networkPacket->Clear();
 
@@ -234,7 +222,7 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 				// Remove player from m_players
 				auto it = std::find_if(m_players.begin(), m_players.end(),
 					[&clientAddr](const Player& p) {
-						return p.Address == clientAddr;
+						return NetworkUtilities::IsSameAddress(p.Address, clientAddr);
 					});
 
 				if (it != m_players.end()) {
@@ -263,7 +251,8 @@ int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockad
 
     for (Player& player : m_players)
     {
-        if (player.ConnectionSalt == connectionSalt && player.Address == clientAddr)
+        if (player.ConnectionSalt == connectionSalt &&
+            NetworkUtilities::IsSameAddress(player.Address, clientAddr))
         {
             uint16_t seqNum = networkPacket->ReadInt16();
             uint16_t ack = networkPacket->ReadInt16();
