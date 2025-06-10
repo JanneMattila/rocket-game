@@ -77,7 +77,6 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 		switch (packetType)
 		{
 		case NetworkPacketType::CONNECTION_REQUEST:
-		{
 			if (size != 1000)
 			{
 				m_logger->Log(LogLevel::WARNING, "Received invalid packet size for connection request", { KV(size) });
@@ -88,8 +87,7 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 			{
 				continue;
 			}
-		}
-		break;
+		    break;
 		case NetworkPacketType::CHALLENGE_RESPONSE:
 			if (size != 1000)
 			{
@@ -109,9 +107,11 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
             }
 			break;
 		case NetworkPacketType::DISCONNECT:
-		{
-		}
-		break;
+            if (HandleDisconnect(std::move(networkPacket), clientAddr) != 0)
+            {
+                continue;
+            }
+		    break;
 		default:
 			break;
 		}
@@ -338,8 +338,44 @@ int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockad
     return 1;
 }
 
+int Server::HandleDisconnect(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr)
+{
+    int64_t connectionSalt = networkPacket->ReadUInt64();
+
+    auto it = std::remove_if(m_players.begin(), m_players.end(),
+        [connectionSalt, &clientAddr](const Player& p) {
+            return
+                p.ConnectionSalt == connectionSalt &&
+                NetworkUtilities::IsSameAddress(p.Address, clientAddr);
+        });
+
+    if (it != m_players.end())
+    {
+        auto playerID = it->PlayerID;
+        m_logger->Log(LogLevel::INFO, "HandleDisconnect: Player disconnected", { KV(playerID) });
+
+        m_players.erase(it, m_players.end());
+
+        // TODO: Notify other players
+    }
+
+    return 1;
+}
+
 int Server::QuitGame()
 {
-	m_logger->Log(LogLevel::DEBUG, "Server is stopping");
+	m_logger->Log(LogLevel::INFO, "Server is stopping. Notifying clients.");
+    for (Player& player : m_players)
+    {
+        // Send disconnect packets to server
+        for (size_t i = 0; i < 10; i++)
+        {
+            NetworkPacket sendNetworkPacket;
+            sendNetworkPacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::DISCONNECT));
+            sendNetworkPacket.WriteInt64(player.ConnectionSalt);
+            m_network->Send(sendNetworkPacket, player.Address);
+        }
+    }
+
 	return 0;
 }

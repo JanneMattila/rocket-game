@@ -29,5 +29,6 @@ public:
 	int HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr);
 	int HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr);
     int HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr);
+    int HandleDisconnect(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr);
 };
 

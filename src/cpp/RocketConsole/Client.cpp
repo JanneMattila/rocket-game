@@ -240,8 +240,8 @@ int Client::ExecuteGame(volatile std::sig_atomic_t& running)
             HandleGameState(std::move(networkPacket));
 			break;
 		case NetworkPacketType::DISCONNECT:
-			m_logger->Log(LogLevel::DEBUG, "Disconnect packet received");
-			running = false;
+            m_logger->Log(LogLevel::INFO, "Received disconnected packet from server");
+            running = false;
 			break;
 		default:
 			m_logger->Log(LogLevel::WARNING, "Unknown packet type");
