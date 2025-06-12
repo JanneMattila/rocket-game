@@ -12,12 +12,15 @@
 #endif
 #include "NetworkConnectionState.h"
 #include "GamePacket.h"
+#include "PacketInfo.h"
 
-struct Player {
+struct Player
+{
 	uint64_t ClientSalt = 0;
 	uint64_t ServerSalt = 0;
 	uint64_t ConnectionSalt = 0;
 	uint8_t PlayerID = 0;
+    // TODO: Add signing key to encrypt payload but not headers
 	sockaddr_in Address{};
 	NetworkConnectionState ConnectionState = NetworkConnectionState::DISCONNECTED;
 	std::chrono::steady_clock::time_point Created;

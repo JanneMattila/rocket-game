@@ -274,7 +274,7 @@ int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockad
             }
             else if (diff == 0)
             {
-                // TODO: Add stats about duplicate received packets
+                // TODO: Add stats about duplicate received packets or replayed packet
                 m_logger->Log(LogLevel::WARNING, "HandleGameState duplicate packets");
             }
 

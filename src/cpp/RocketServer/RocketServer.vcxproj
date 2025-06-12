@@ -148,6 +148,7 @@
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Keyboard.h" />
     <ClInclude Include="NetworkUtilities.h" />
     <ClInclude Include="NetworkBase.h" />
     <ClInclude Include="CRC32.h" />
@@ -158,6 +159,7 @@
     <ClInclude Include="NetworkConnectionState.h" />
     <ClInclude Include="NetworkPacket.h" />
     <ClInclude Include="NetworkPacketType.h" />
+    <ClInclude Include="PacketInfo.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="Server.h" />
     <ClInclude Include="Utils.h" />

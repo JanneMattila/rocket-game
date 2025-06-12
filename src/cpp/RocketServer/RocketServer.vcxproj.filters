@@ -83,6 +83,12 @@
     <ClInclude Include="NetworkUtilities.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PacketInfo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Keyboard.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="Dockerfile">

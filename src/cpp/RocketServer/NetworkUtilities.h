@@ -3,7 +3,8 @@
 #include <vector>
 #include <chrono>
 #include <assert.h>
-#include "GamePacket.h"
+#include "Player.h"
+#include "PacketInfo.h"
 
 constexpr auto SEQUENCE_NUMBER_MAX = 65535;
 constexpr auto SEQUENCE_NUMBER_HALF = 32768;

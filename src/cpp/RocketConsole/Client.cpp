@@ -1,7 +1,7 @@
 #include "Client.h"
 #include "NetworkPacketType.h"
 #include "Utils.h"
-#include <NetworkUtilities.h>
+#include "NetworkUtilities.h"
 
 Client::Client(std::shared_ptr<Logger> logger, std::unique_ptr<Network> network)
 	: m_logger(logger), m_network(std::move(network)) {

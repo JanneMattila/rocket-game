@@ -5,6 +5,7 @@
 #include "Player.h"
 #include "Logger.h"
 #include "Network.h"
+#include "PacketInfo.h"
 
 class Client
 {

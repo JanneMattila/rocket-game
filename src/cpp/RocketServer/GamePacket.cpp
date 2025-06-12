@@ -1,6 +1,6 @@
 #include "GamePacket.h"
 
-
+/*
 std::vector<uint8_t> GamePacket::ToBytes() {
     WriteInt64(_ticks);
     WriteInt32(static_cast<int32_t>(PositionX * 1000));
@@ -50,3 +50,4 @@ void GamePacket::ReadFromBytes(const std::vector<uint8_t>& data) {
     this->_isRight = (k >> 2) & 1;
     this->_isFiring = k & 1;
 }
+*/

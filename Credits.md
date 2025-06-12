@@ -4,6 +4,10 @@
 
 https://gafferongames.com/
 
+https://github.com/mas-bandwidth/yojimbo
+
+https://github.com/mas-bandwidth/netcode
+
 https://opentelemetry.io/docs/languages/cpp/getting-started/
 
 https://learn-monogame.github.io/tutorial/infinite-background-shader/

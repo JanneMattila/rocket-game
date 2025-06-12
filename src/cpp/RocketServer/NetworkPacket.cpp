@@ -28,6 +28,7 @@ size_t NetworkPacket::Size()
 void NetworkPacket::Clear()
 {
 	m_buffer.clear();
+    m_buffer.reserve(1024);
 	WriteInt32(0); // Placeholder for CRC32
 	m_offset = 0;
 }

@@ -169,8 +169,8 @@ int Network::Initialize(std::string server, int port, sockaddr_in& addr)
 
 std::unique_ptr<NetworkPacket> Network::Receive(sockaddr_in& clientAddr, int& result)
 {
-	// Resize the vector to the maximum buffer size
-	std::vector<uint8_t> data(1024);
+    std::vector<uint8_t> data;
+    data.reserve(1024);
 
 	socklen_t addrLen = sizeof(clientAddr);
 	int n = recvfrom(
@@ -206,9 +206,6 @@ std::unique_ptr<NetworkPacket> Network::Receive(sockaddr_in& clientAddr, int& re
 		result = 1;
 		return nullptr;
 	}
-
-	// Resize the vector to the actual number of bytes received
-	data.resize(n);
 
 	// Log the received buffer as comma separated values as string
 #if _DEBUG
