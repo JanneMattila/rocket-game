@@ -207,13 +207,16 @@ std::unique_ptr<NetworkPacket> Network::Receive(sockaddr_in& clientAddr, int& re
 		return nullptr;
 	}
 
+    // Resize to actual received size
+    data.resize(n);
+
 	// Log the received buffer as comma separated values as string
 #if _DEBUG
 	std::string bufferString;
-	for (size_t i = 0; i < data.size(); i++)
+	for (size_t i = 0; i < n; i++)
 	{
 		bufferString += std::to_string(data[i]);
-		if (i != data.size() - 1)
+		if (i != n - 1)
 		{
 			bufferString += ",";
 		}
@@ -225,7 +228,6 @@ std::unique_ptr<NetworkPacket> Network::Receive(sockaddr_in& clientAddr, int& re
 	);
 #endif
 
-    data.resize(n); // Resize to actual received size
 	return std::make_unique<NetworkPacket>(data);
 }
 
