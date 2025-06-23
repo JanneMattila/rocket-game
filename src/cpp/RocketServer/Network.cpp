@@ -169,14 +169,14 @@ int Network::Initialize(std::string server, int port, sockaddr_in& addr)
 
 std::unique_ptr<NetworkPacket> Network::Receive(sockaddr_in& clientAddr, int& result)
 {
-    std::vector<uint8_t> data;
-    data.reserve(1024);
+    const int len = 1024;
+    std::vector<uint8_t> data(len);
 
 	socklen_t addrLen = sizeof(clientAddr);
 	int n = recvfrom(
 		m_socket,
 		reinterpret_cast<char*>(data.data()),
-		(int)data.size(),
+        len,
 		0,
 		reinterpret_cast<sockaddr*>(&clientAddr),
 		&addrLen);
@@ -225,6 +225,7 @@ std::unique_ptr<NetworkPacket> Network::Receive(sockaddr_in& clientAddr, int& re
 	);
 #endif
 
+    data.resize(n); // Resize to actual received size
 	return std::make_unique<NetworkPacket>(data);
 }
 
