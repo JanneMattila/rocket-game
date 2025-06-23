@@ -22,7 +22,7 @@ set(SOURCES
     GamePacket.cpp
     Logger.cpp
     Server.cpp
-    ServerNetwork.cpp
+    Network.cpp
     Utils.cpp
 )
 

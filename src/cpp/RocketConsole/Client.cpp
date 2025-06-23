@@ -1,3 +1,4 @@
+#include <thread>
 #include "Client.h"
 #include "NetworkPacketType.h"
 #include "Utils.h"

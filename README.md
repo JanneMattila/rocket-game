@@ -11,6 +11,8 @@ $imageServer = "rocketserver"
 $imageConsole = "rocketconsole"
 $location = "northeurope"
 
+podman machine start
+
 # Create resource group
 az group create --name $resourceGroup --location $location
 
@@ -21,26 +23,30 @@ az acr update -n $acrName --admin-enabled true
 $acrPassword=$(az acr credential show -n $acrName --query passwords[0].value -o tsv)
 
 # Build image
-cd src/cpp/RocketServer
-docker build -t "$acrName.azurecr.io/$imageServer" .
-cd ..\RocketConsole
-docker build -t "$acrName.azurecr.io/$imageConsole" .
+pushd src/cpp/RocketServer
+podman build -t "$acrName.azurecr.io/$imageServer" .
+popd
+
+podman build -t "$acrName.azurecr.io/$imageConsole" -f src/cpp/RocketConsole/Dockerfile .
 
 # Test image
-docker run -it --rm -p 3501:3501/udp --name $imageServer "$acrName.azurecr.io/$imageServer"
-docker run -it --rm --name $imageConsole "$acrName.azurecr.io/$imageConsole"
+podman run -it --rm -p 3501:3501/udp --name $imageServer "$acrName.azurecr.io/$imageServer"
+podman run -it --rm --name $imageConsole "$acrName.azurecr.io/$imageConsole"
 
 # Login to ACR
-az acr login --name $acrName
+$accessToken = az acr login --name $acrName --expose-token --query accessToken -o tsv
 
 # Build images in ACR
 az acr build --registry $acrName --image "$imageServer" ./src/cpp/RocketServer
 az acr build --registry $acrName --image "$imageConsole" ./src/cpp/RocketConsole
 
 # Push images
-docker push "$acrName.azurecr.io/$imageServer"
-docker push "$acrName.azurecr.io/$imageConsole"
+podman login "$acrName.azurecr.io" -u 00000000-0000-0000-0000-000000000000 -p $accessToken
+podman push "$acrName.azurecr.io/$imageServer"
+podman push "$acrName.azurecr.io/$imageConsole"
 
 # Deploy to ACI
 az container create --resource-group $resourceGroup --name "$imageServer" --image "$acrName.azurecr.io/$imageServer" --cpu 1 --memory 1 --registry-login-server "$acrName.azurecr.io" --registry-username $acrName --registry-password $acrPassword --ports 3501 --protocol UDP --ip-address public --restart-policy Never --os-type linux
+
+podman machine stop
 ```
