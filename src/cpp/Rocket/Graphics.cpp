@@ -5,6 +5,8 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "d2d1.lib")
+#pragma comment(lib, "d3d11.lib")
+#pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "windowscodecs.lib")
 
 Graphics::Graphics()
@@ -27,33 +29,113 @@ HRESULT Graphics::InitializeDevice(HWND hWnd, HINSTANCE hInstance)
     m_hInstance = hInstance;
     m_hWnd = hWnd;
 
-    // Create a Direct2D factory
-    HRESULT hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, &m_pD2DFactory);
+    HRESULT hr = S_OK;
+
+    // Create D3D11 device and context
+    D3D_FEATURE_LEVEL featureLevels[] = {
+        D3D_FEATURE_LEVEL_11_1,
+        D3D_FEATURE_LEVEL_11_0,
+        D3D_FEATURE_LEVEL_10_1,
+        D3D_FEATURE_LEVEL_10_0
+    };
+
+    hr = D3D11CreateDevice(
+        nullptr,
+        D3D_DRIVER_TYPE_HARDWARE,
+        nullptr,
+        D3D11_CREATE_DEVICE_BGRA_SUPPORT, // Required for Direct2D interop
+        featureLevels,
+        ARRAYSIZE(featureLevels),
+        D3D11_SDK_VERSION,
+        &m_pD3DDevice,
+        nullptr,
+        &m_pD3DContext
+    );
     if (FAILED(hr)) return hr;
 
-    // Get the client rectangle of the window
-    RECT rc{};
-    GetClientRect(hWnd, &rc); // hWnd is the handle to your application window
-
-    D2D1_SIZE_U size = D2D1::SizeU(rc.right - rc.left, rc.bottom - rc.top);
-
-    hr = m_pD2DFactory->CreateHwndRenderTarget(
-        D2D1::RenderTargetProperties(),
-        D2D1::HwndRenderTargetProperties(hWnd, size),
-        &m_pRenderTarget);
+    // Get DXGI device
+    IDXGIDevice* dxgiDevice = nullptr;
+    hr = m_pD3DDevice->QueryInterface(&dxgiDevice);
     if (FAILED(hr)) return hr;
 
-    hr = m_pRenderTarget->CreateSolidColorBrush(
+    // Get DXGI adapter
+    IDXGIAdapter* dxgiAdapter = nullptr;
+    hr = dxgiDevice->GetAdapter(&dxgiAdapter);
+    if (FAILED(hr)) return hr;
+
+    // Get DXGI factory
+    IDXGIFactory2* dxgiFactory = nullptr;
+    hr = dxgiAdapter->GetParent(IID_PPV_ARGS(&dxgiFactory));
+    if (FAILED(hr)) return hr;
+
+    // Create swap chain
+    DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
+    swapChainDesc.Width = RENDER_WIDTH;
+    swapChainDesc.Height = RENDER_HEIGHT;
+    swapChainDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+    swapChainDesc.SampleDesc.Count = 1;
+    swapChainDesc.SampleDesc.Quality = 0;
+    swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+    swapChainDesc.BufferCount = 2; // Double buffering
+    swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+    swapChainDesc.Flags = 0;
+
+    hr = dxgiFactory->CreateSwapChainForHwnd(
+        m_pD3DDevice,
+        hWnd,
+        &swapChainDesc,
+        nullptr,
+        nullptr,
+        &m_pSwapChain
+    );
+    if (FAILED(hr)) return hr;
+
+    // Create Direct2D factory
+    D2D1_FACTORY_OPTIONS options = {};
+#ifdef _DEBUG
+    options.debugLevel = D2D1_DEBUG_LEVEL_INFORMATION;
+#endif
+
+    hr = D2D1CreateFactory(D2D1_FACTORY_TYPE_SINGLE_THREADED, options, &m_pD2DFactory);
+    if (FAILED(hr)) return hr;
+
+    // Create Direct2D device
+    hr = m_pD2DFactory->CreateDevice(dxgiDevice, &m_pD2DDevice);
+    if (FAILED(hr)) return hr;
+
+    // Create Direct2D device context
+    hr = m_pD2DDevice->CreateDeviceContext(D2D1_DEVICE_CONTEXT_OPTIONS_NONE, &m_pD2DContext);
+    if (FAILED(hr)) return hr;
+
+    // Get back buffer from swap chain
+    IDXGISurface* backBuffer = nullptr;
+    hr = m_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&backBuffer));
+    if (FAILED(hr)) return hr;
+
+    // Create Direct2D bitmap from back buffer
+    D2D1_BITMAP_PROPERTIES1 bitmapProperties = D2D1::BitmapProperties1(
+        D2D1_BITMAP_OPTIONS_TARGET | D2D1_BITMAP_OPTIONS_CANNOT_DRAW,
+        D2D1::PixelFormat(DXGI_FORMAT_B8G8R8A8_UNORM, D2D1_ALPHA_MODE_PREMULTIPLIED)
+    );
+
+    hr = m_pD2DContext->CreateBitmapFromDxgiSurface(backBuffer, &bitmapProperties, &m_pD2DTargetBitmap);
+    if (FAILED(hr)) return hr;
+
+    // Set the bitmap as the target
+    m_pD2DContext->SetTarget(m_pD2DTargetBitmap);
+
+    // Create brushes
+    hr = m_pD2DContext->CreateSolidColorBrush(
         D2D1::ColorF(D2D1::ColorF::White),
         &m_pWhiteBrush);
     if (FAILED(hr)) return hr;
 
-    hr = m_pRenderTarget->CreateSolidColorBrush(
+    hr = m_pD2DContext->CreateSolidColorBrush(
         D2D1::ColorF(D2D1::ColorF::Gray),
         &m_pGrayBrush);
     if (FAILED(hr)) return hr;
 
-    hr = m_pRenderTarget->CreateSolidColorBrush(
+    hr = m_pD2DContext->CreateSolidColorBrush(
         D2D1::ColorF(D2D1::ColorF::Blue),
         &m_pBlueBrush);
     if (FAILED(hr)) return hr;
@@ -84,16 +166,28 @@ HRESULT Graphics::InitializeDevice(HWND hWnd, HINSTANCE hInstance)
     hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_IWICImagingFactory, reinterpret_cast<void**>(&m_pIWICFactory));
     if (FAILED(hr)) return hr;
 
+    // Clean up temporary interfaces
+    SAFE_RELEASE(backBuffer);
+    SAFE_RELEASE(dxgiDevice);
+    SAFE_RELEASE(dxgiAdapter);
+    SAFE_RELEASE(dxgiFactory);
+
     return hr;
 }
 
 void Graphics::CleanupDevice()
 {
     // Release all Direct2D resources
-    SAFE_RELEASE(m_pRenderTarget);
+    SAFE_RELEASE(m_pD2DTargetBitmap);
+    SAFE_RELEASE(m_pD2DContext);
+    SAFE_RELEASE(m_pD2DDevice);
     SAFE_RELEASE(m_pD2DFactory);
+    SAFE_RELEASE(m_pSwapChain);
+    SAFE_RELEASE(m_pD3DContext);
+    SAFE_RELEASE(m_pD3DDevice);
     SAFE_RELEASE(m_pIWICFactory);
     SAFE_RELEASE(m_pTextFormat);
+    SAFE_RELEASE(m_pDWriteFactory);
     SAFE_RELEASE(m_pWhiteBrush);
     SAFE_RELEASE(m_pGrayBrush);
     SAFE_RELEASE(m_pBlueBrush);
@@ -157,7 +251,7 @@ HRESULT Graphics::LoadPng(UINT resourceID, ID2D1Bitmap** ppBitmap)
     if (FAILED(hr)) return hr;
 
     // Convert the frame to a Direct2D bitmap.
-    hr = m_pRenderTarget->CreateBitmapFromWicBitmap(pConverter, nullptr, ppBitmap);
+    hr = m_pD2DContext->CreateBitmapFromWicBitmap(pConverter, nullptr, ppBitmap);
     if (FAILED(hr)) return hr;
     if (*ppBitmap == nullptr) return E_FAIL;
 
@@ -172,7 +266,7 @@ HRESULT Graphics::LoadPng(UINT resourceID, ID2D1Bitmap** ppBitmap)
 HRESULT Graphics::LoadResources()
 {
     HRESULT hr = S_OK;
-    if (m_pRenderTarget == nullptr || m_pIWICFactory == nullptr) return E_FAIL;
+    if (m_pD2DContext == nullptr || m_pIWICFactory == nullptr) return E_FAIL;
 
     // Load ship bitmap
     hr = LoadPng(IDB_PNG_SHIP1, &m_pShipBitmap);
@@ -181,27 +275,27 @@ HRESULT Graphics::LoadResources()
     return S_OK;
 }
 
-void Graphics::Render(double deltaTime)
+void Graphics::Render(double deltaTime, double fps)
 {
-    if (m_pRenderTarget == nullptr) return;
+    if (m_pD2DContext == nullptr) return;
 
-    m_pRenderTarget->BeginDraw();
-    m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+    m_pD2DContext->BeginDraw();
+    m_pD2DContext->Clear(D2D1::ColorF(D2D1::ColorF::Black));
 
     wchar_t fpsText[256];
-    swprintf_s(fpsText, L"%.4lf", deltaTime);
+    swprintf_s(fpsText, L"FPS: %.0lf", fps);
 
     // Draw the text
-    m_pRenderTarget->DrawText(
+    m_pD2DContext->DrawText(
         fpsText,
-        wcslen(fpsText),
+        (int)wcslen(fpsText),
         m_pTextFormat,
-        D2D1::RectF(10, 10, 200, 50), // Position and size of the text
+        D2D1::RectF(10, 10, 400, 50), // Position and size of the text
         m_pWhiteBrush);
 
-    std::wstring text = L"Statistics:\n";
+    std::wstring text = L"TBA";
 
-    m_pRenderTarget->DrawText(
+    m_pD2DContext->DrawText(
         text.c_str(),
         (int)text.length(),
         m_pTextFormat,
@@ -211,15 +305,23 @@ void Graphics::Render(double deltaTime)
     // Draw the ship bitmap at a specific position
     if (m_pShipBitmap)
     {
-        m_pRenderTarget->DrawBitmap(m_pShipBitmap, D2D1::RectF(50, 50, 150, 150));
+        m_pD2DContext->DrawBitmap(m_pShipBitmap, D2D1::RectF(50, 50, 50 + 75, 50 + 98));
     }
 
-    HRESULT hr = m_pRenderTarget->EndDraw();
+    HRESULT hr = m_pD2DContext->EndDraw();
     if (hr == D2DERR_RECREATE_TARGET)
     {
         CleanupDevice();
-
         // Device lost, recreate device resources
         InitializeDevice(m_hWnd, m_hInstance);
+    }
+}
+
+void Graphics::Present()
+{
+    if (m_pSwapChain)
+    {
+        // Present with VSYNC (1 = wait for vertical sync, 0 = no wait)
+        m_pSwapChain->Present(1, 0);
     }
 }

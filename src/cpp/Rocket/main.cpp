@@ -6,15 +6,16 @@
 constexpr auto MAX_LOADSTRING = 100;
 
 // Global Variables:
-HINSTANCE hInst;                                // current instance
-HWND g_hwnd;                                      // Handle to the window
-WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
-WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+HINSTANCE hInst;                                
+HWND g_hwnd;                                    
+WCHAR szTitle[MAX_LOADSTRING];                  
+WCHAR szWindowClass[MAX_LOADSTRING];            
 bool g_bRunning = true;
 
-// Global or class member variables
+// Improved timing variables
 UINT32 g_frameCount = 0;
-double g_lastTime = 0.0;
+std::chrono::high_resolution_clock::time_point g_lastFpsUpdate;
+std::chrono::high_resolution_clock::time_point g_lastFrameTime;
 double g_fps = 0.0;
 
 // Key state variables
@@ -48,7 +49,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     HRESULT hr = InitInstance(hInstance, nCmdShow);
     if (FAILED(hr))
     {
-        // Display an error message box
         MessageBox(NULL, L"Failed to initialize the application.", L"Error", MB_ICONERROR | MB_OK);
         return FALSE;
     }
@@ -57,30 +57,32 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     MSG msg = {};
 
-    // Use high_resolution_clock for timing
+    // Initialize timing
     auto currentTime = std::chrono::high_resolution_clock::now();
-    auto timeSpan = currentTime.time_since_epoch();
-    double seconds = std::chrono::duration_cast<std::chrono::duration<double>>(timeSpan).count();
+    g_lastFrameTime = currentTime;
+    g_lastFpsUpdate = currentTime;
 
     while (g_bRunning)
     {
-        // Update frame count every frame
+        auto newTime = std::chrono::high_resolution_clock::now();
+        
+        // Calculate delta time in seconds
+        auto deltaTimeDuration = newTime - g_lastFrameTime;
+        double deltaTime = std::chrono::duration_cast<std::chrono::duration<double>>(deltaTimeDuration).count();
+        g_lastFrameTime = newTime;
+
+        // Update frame count
         g_frameCount++;
 
-        // Calculate delta time
-        auto newTime = std::chrono::high_resolution_clock::now();
-        auto newTimeSpan = newTime.time_since_epoch();
-        double newSeconds = std::chrono::duration_cast<std::chrono::duration<double>>(newTimeSpan).count();
-        double runningTime = newSeconds - g_lastTime;
-        double deltaTime = newSeconds - seconds;
-        seconds = newSeconds;
-
-        // Update FPS every second
-        if (runningTime >= 1.0)
+        // Calculate FPS every second
+        auto timeSinceLastFpsUpdate = newTime - g_lastFpsUpdate;
+        double secondsSinceLastUpdate = std::chrono::duration_cast<std::chrono::duration<double>>(timeSinceLastFpsUpdate).count();
+        
+        if (secondsSinceLastUpdate >= 1.0)
         {
-            g_fps = g_frameCount / runningTime;
+            g_fps = g_frameCount / secondsSinceLastUpdate;
             g_frameCount = 0;
-            g_lastTime = newSeconds;
+            g_lastFpsUpdate = newTime;
         }
 
         // Process messages
@@ -90,7 +92,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             DispatchMessage(&msg);
         }
 
-        g_graphics.Render(deltaTime);
+        g_graphics.Render(deltaTime, g_fps);
+        g_graphics.Present(); // VSYNC support - this will block until next refresh
     }
 
     return (int) msg.wParam;
