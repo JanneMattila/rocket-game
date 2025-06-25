@@ -1,5 +1,6 @@
-#include "Graphics.h"
 #include <string>
+#include "Graphics.h"
+#include "resource.h" // Include your resource header for resource IDs
 
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "dwrite.lib")
@@ -79,7 +80,7 @@ HRESULT Graphics::InitializeDevice(HWND hWnd, HINSTANCE hInstance)
     hr = CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
     if (FAILED(hr)) return hr;
 
-    // Load a PNG image from the resources
+    // Create a WIC factory
     hr = CoCreateInstance(CLSID_WICImagingFactory, nullptr, CLSCTX_INPROC_SERVER, IID_IWICImagingFactory, reinterpret_cast<void**>(&m_pIWICFactory));
     if (FAILED(hr)) return hr;
 
@@ -96,7 +97,7 @@ void Graphics::CleanupDevice()
     SAFE_RELEASE(m_pWhiteBrush);
     SAFE_RELEASE(m_pGrayBrush);
     SAFE_RELEASE(m_pBlueBrush);
-    SAFE_RELEASE(m_pCarBitmap);
+    SAFE_RELEASE(m_pShipBitmap);
     SAFE_RELEASE(m_pExplosionBitmap);
     SAFE_RELEASE(m_pTileBitmap);
 }
@@ -168,6 +169,18 @@ HRESULT Graphics::LoadPng(UINT resourceID, ID2D1Bitmap** ppBitmap)
     return hr;
 }
 
+HRESULT Graphics::LoadResources()
+{
+    HRESULT hr = S_OK;
+    if (m_pRenderTarget == nullptr || m_pIWICFactory == nullptr) return E_FAIL;
+
+    // Load ship bitmap
+    hr = LoadPng(IDB_PNG_SHIP1, &m_pShipBitmap);
+    if (FAILED(hr)) return hr;
+
+    return S_OK;
+}
+
 void Graphics::Render(double deltaTime)
 {
     if (m_pRenderTarget == nullptr) return;
@@ -175,14 +188,31 @@ void Graphics::Render(double deltaTime)
     m_pRenderTarget->BeginDraw();
     m_pRenderTarget->Clear(D2D1::ColorF(D2D1::ColorF::Black));
 
+    wchar_t fpsText[256];
+    swprintf_s(fpsText, L"%.4lf", deltaTime);
+
+    // Draw the text
+    m_pRenderTarget->DrawText(
+        fpsText,
+        wcslen(fpsText),
+        m_pTextFormat,
+        D2D1::RectF(10, 10, 200, 50), // Position and size of the text
+        m_pWhiteBrush);
+
     std::wstring text = L"Statistics:\n";
 
     m_pRenderTarget->DrawText(
         text.c_str(),
         (int)text.length(),
         m_pTextFormat,
-        D2D1::RectF(10, 10, 400, 200), // Position and size of the text
+        D2D1::RectF(10, 100, 400, 200), // Position and size of the text
         m_pWhiteBrush);
+
+    // Draw the ship bitmap at a specific position
+    if (m_pShipBitmap)
+    {
+        m_pRenderTarget->DrawBitmap(m_pShipBitmap, D2D1::RectF(50, 50, 150, 150));
+    }
 
     HRESULT hr = m_pRenderTarget->EndDraw();
     if (hr == D2DERR_RECREATE_TARGET)

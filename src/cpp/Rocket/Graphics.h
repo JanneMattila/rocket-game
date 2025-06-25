@@ -36,7 +36,7 @@ private:
     ID2D1SolidColorBrush* m_pGrayBrush = nullptr;
     ID2D1SolidColorBrush* m_pBlueBrush = nullptr;
 
-    ID2D1Bitmap* m_pCarBitmap = nullptr;
+    ID2D1Bitmap* m_pShipBitmap = nullptr;
     ID2D1Bitmap* m_pExplosionBitmap = nullptr;
     ID2D1Bitmap* m_pTileBitmap = nullptr;
 
@@ -46,6 +46,7 @@ public:
     HRESULT InitializeDevice(HWND hWnd, HINSTANCE hInstance);
     void CleanupDevice();
     HRESULT LoadPng(UINT resourceID, ID2D1Bitmap** ppBitmap);
+    HRESULT LoadResources();
     void Render(double deltaTime);
 };
 

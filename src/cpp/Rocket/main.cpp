@@ -129,6 +129,9 @@ HRESULT InitInstance(HINSTANCE hInstance, int nCmdShow)
    HRESULT hr = g_graphics.InitializeDevice(hWnd, hInst);
    if (FAILED(hr)) return hr;
 
+   hr = g_graphics.LoadResources();
+   if (FAILED(hr)) return hr;
+
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
