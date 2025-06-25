@@ -57,6 +57,7 @@ public:
     ~Graphics();
     HRESULT InitializeDevice(HWND hWnd, HINSTANCE hInstance);
     void CleanupDevice();
+    HRESULT RecreateDeviceResources();
     HRESULT LoadPng(UINT resourceID, ID2D1Bitmap** ppBitmap);
     HRESULT LoadResources();
     void Render(double deltaTime, double fps);

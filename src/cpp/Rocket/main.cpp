@@ -149,20 +149,21 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_KEYDOWN:
         switch (wParam)
         {
-        case VK_UP:    g_keyUpPressed = true; break;
-        case VK_DOWN:  g_keyDownPressed = true; break;
-        case VK_LEFT:  g_keyLeftPressed = true; break;
-        case VK_RIGHT: g_keyRightPressed = true; break;
+            case VK_ESCAPE:g_bRunning = false; break;
+            case VK_UP:    g_keyUpPressed = true; break;
+            case VK_DOWN:  g_keyDownPressed = true; break;
+            case VK_LEFT:  g_keyLeftPressed = true; break;
+            case VK_RIGHT: g_keyRightPressed = true; break;
         }
         break;
 
     case WM_KEYUP:
         switch (wParam)
         {
-        case VK_UP:    g_keyUpPressed = false; break;
-        case VK_DOWN:  g_keyDownPressed = false; break;
-        case VK_LEFT:  g_keyLeftPressed = false; break;
-        case VK_RIGHT: g_keyRightPressed = false; break;
+            case VK_UP:    g_keyUpPressed = false; break;
+            case VK_DOWN:  g_keyDownPressed = false; break;
+            case VK_LEFT:  g_keyLeftPressed = false; break;
+            case VK_RIGHT: g_keyRightPressed = false; break;
         }
         break;
     break;

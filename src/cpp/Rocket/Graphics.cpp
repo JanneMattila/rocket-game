@@ -290,7 +290,7 @@ void Graphics::Render(double deltaTime, double fps)
         fpsText,
         (int)wcslen(fpsText),
         m_pTextFormat,
-        D2D1::RectF(10, 10, 400, 50), // Position and size of the text
+        D2D1::RectF(10, 10, 400, 50),
         m_pWhiteBrush);
 
     std::wstring text = L"TBA";
@@ -299,7 +299,7 @@ void Graphics::Render(double deltaTime, double fps)
         text.c_str(),
         (int)text.length(),
         m_pTextFormat,
-        D2D1::RectF(10, 100, 400, 200), // Position and size of the text
+        D2D1::RectF(10, 100, 400, 200),
         m_pWhiteBrush);
 
     // Draw the ship bitmap at a specific position
@@ -311,10 +311,32 @@ void Graphics::Render(double deltaTime, double fps)
     HRESULT hr = m_pD2DContext->EndDraw();
     if (hr == D2DERR_RECREATE_TARGET)
     {
-        CleanupDevice();
-        // Device lost, recreate device resources
-        InitializeDevice(m_hWnd, m_hInstance);
+        // Device lost, need to recreate everything
+        RecreateDeviceResources();
     }
+}
+
+// Add this new method to handle device recreation properly
+HRESULT Graphics::RecreateDeviceResources()
+{
+    CleanupDevice();
+    
+    HRESULT hr = InitializeDevice(m_hWnd, m_hInstance);
+    if (FAILED(hr))
+    {
+        // Log error or handle gracefully
+        return hr;
+    }
+    
+    // Reload all resources after recreating the device
+    hr = LoadResources();
+    if (FAILED(hr))
+    {
+        // Log error or handle gracefully
+        return hr;
+    }
+    
+    return S_OK;
 }
 
 void Graphics::Present()
