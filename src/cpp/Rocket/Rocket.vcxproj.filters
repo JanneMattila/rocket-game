@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Shared">
+      <UniqueIdentifier>{3b4abe8c-e26a-4e11-822c-e639e3f27eb4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -27,9 +30,39 @@
     <ClInclude Include="main.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Game.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Graphics.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RocketServer\CRC32.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RocketServer\GamePacket.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RocketServer\Logger.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RocketServer\Network.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RocketServer\NetworkPacket.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\RocketServer\Utils.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="Game.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Graphics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -43,6 +76,30 @@
       <Filter>Resource Files</Filter>
     </Image>
     <Image Include="Rocket.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\Explosion01.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\laserRed07.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\Mark.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\playerShip3_blue.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\playerShip3_green.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\playerShip3_orange.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\playerShip3_red.png">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\Shot.png">
       <Filter>Resource Files</Filter>
     </Image>
   </ItemGroup>

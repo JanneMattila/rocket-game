@@ -1,18 +1,33 @@
-#pragma comment(lib, "ws2_32.lib")
-
+#include <chrono>
 #include "framework.h"
 #include "main.h"
+#include "Graphics.h"
 
-#define MAX_LOADSTRING 100
+constexpr auto MAX_LOADSTRING = 100;
 
 // Global Variables:
 HINSTANCE hInst;                                // current instance
+HWND g_hwnd;                                      // Handle to the window
 WCHAR szTitle[MAX_LOADSTRING];                  // The title bar text
 WCHAR szWindowClass[MAX_LOADSTRING];            // the main window class name
+bool g_bRunning = true;
+
+// Global or class member variables
+UINT32 g_frameCount = 0;
+double g_lastTime = 0.0;
+double g_fps = 0.0;
+
+// Key state variables
+bool g_keyUpPressed = false;
+bool g_keyDownPressed = false;
+bool g_keyLeftPressed = false;
+bool g_keyRightPressed = false;
+
+Graphics g_graphics;
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
+HRESULT             InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
@@ -24,46 +39,66 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
 
-    // TODO: Place code here.
-
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_ROCKET, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
 
     // Perform application initialization:
-    if (!InitInstance (hInstance, nCmdShow))
+    HRESULT hr = InitInstance(hInstance, nCmdShow);
+    if (FAILED(hr))
     {
+        // Display an error message box
+        MessageBox(NULL, L"Failed to initialize the application.", L"Error", MB_ICONERROR | MB_OK);
         return FALSE;
     }
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_ROCKET));
 
-    MSG msg;
+    MSG msg = {};
 
-    // Main message loop:
-    while (GetMessage(&msg, nullptr, 0, 0))
+    // Use high_resolution_clock for timing
+    auto currentTime = std::chrono::high_resolution_clock::now();
+    auto timeSpan = currentTime.time_since_epoch();
+    double seconds = std::chrono::duration_cast<std::chrono::duration<double>>(timeSpan).count();
+
+    while (g_bRunning)
     {
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+        // Update frame count every frame
+        g_frameCount++;
+
+        // Calculate delta time
+        auto newTime = std::chrono::high_resolution_clock::now();
+        auto newTimeSpan = newTime.time_since_epoch();
+        double newSeconds = std::chrono::duration_cast<std::chrono::duration<double>>(newTimeSpan).count();
+        double runningTime = newSeconds - g_lastTime;
+        double deltaTime = newSeconds - seconds;
+        seconds = newSeconds;
+
+        // Update FPS every second
+        if (runningTime >= 1.0)
+        {
+            g_fps = g_frameCount / runningTime;
+            g_frameCount = 0;
+            g_lastTime = newSeconds;
+        }
+
+        // Process messages
+        while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
+
+        g_graphics.Render(deltaTime);
     }
 
     return (int) msg.wParam;
 }
 
-
-
-//
-//  FUNCTION: MyRegisterClass()
-//
-//  PURPOSE: Registers the window class.
-//
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
-    WNDCLASSEXW wcex;
+    WNDCLASSEXW wcex{};
 
     wcex.cbSize = sizeof(WNDCLASSEX);
 
@@ -75,105 +110,62 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_ROCKET));
     wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
     wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_ROCKET);
     wcex.lpszClassName  = szWindowClass;
     wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
 
     return RegisterClassExW(&wcex);
 }
 
-//
-//   FUNCTION: InitInstance(HINSTANCE, int)
-//
-//   PURPOSE: Saves instance handle and creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we save the instance handle in a global variable and
-//        create and display the main program window.
-//
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
+
+HRESULT InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
 
    HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
       CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
 
-   if (!hWnd)
-   {
-      return FALSE;
-   }
+   if (!hWnd) return E_FAIL;
+
+   HRESULT hr = g_graphics.InitializeDevice(hWnd, hInst);
+   if (FAILED(hr)) return hr;
 
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
 
-   return TRUE;
+   g_hwnd = hWnd;
+   return S_OK;
 }
 
-//
-//  FUNCTION: WndProc(HWND, UINT, WPARAM, LPARAM)
-//
-//  PURPOSE: Processes messages for the main window.
-//
-//  WM_COMMAND  - process the application menu
-//  WM_PAINT    - Paint the main window
-//  WM_DESTROY  - post a quit message and return
-//
-//
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
     switch (message)
     {
-    case WM_COMMAND:
+    case WM_KEYDOWN:
+        switch (wParam)
         {
-            int wmId = LOWORD(wParam);
-            // Parse the menu selections:
-            switch (wmId)
-            {
-            case IDM_ABOUT:
-                DialogBox(hInst, MAKEINTRESOURCE(IDD_ABOUTBOX), hWnd, About);
-                break;
-            case IDM_EXIT:
-                DestroyWindow(hWnd);
-                break;
-            default:
-                return DefWindowProc(hWnd, message, wParam, lParam);
-            }
+        case VK_UP:    g_keyUpPressed = true; break;
+        case VK_DOWN:  g_keyDownPressed = true; break;
+        case VK_LEFT:  g_keyLeftPressed = true; break;
+        case VK_RIGHT: g_keyRightPressed = true; break;
         }
         break;
-    case WM_PAINT:
+
+    case WM_KEYUP:
+        switch (wParam)
         {
-            PAINTSTRUCT ps;
-            HDC hdc = BeginPaint(hWnd, &ps);
-            // TODO: Add any drawing code that uses hdc here...
-            EndPaint(hWnd, &ps);
+        case VK_UP:    g_keyUpPressed = false; break;
+        case VK_DOWN:  g_keyDownPressed = false; break;
+        case VK_LEFT:  g_keyLeftPressed = false; break;
+        case VK_RIGHT: g_keyRightPressed = false; break;
         }
         break;
+    break;
     case WM_DESTROY:
+        g_bRunning = false; // This will cause the game loop to exit
         PostQuitMessage(0);
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
     return 0;
-}
-
-// Message handler for about box.
-INT_PTR CALLBACK About(HWND hDlg, UINT message, WPARAM wParam, LPARAM lParam)
-{
-    UNREFERENCED_PARAMETER(lParam);
-    switch (message)
-    {
-    case WM_INITDIALOG:
-        return (INT_PTR)TRUE;
-
-    case WM_COMMAND:
-        if (LOWORD(wParam) == IDOK || LOWORD(wParam) == IDCANCEL)
-        {
-            EndDialog(hDlg, LOWORD(wParam));
-            return (INT_PTR)TRUE;
-        }
-        break;
-    }
-    return (INT_PTR)FALSE;
 }

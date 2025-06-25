@@ -82,6 +82,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -96,6 +98,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -110,6 +114,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -124,6 +130,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -134,17 +142,35 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="framework.h" />
+    <ClInclude Include="Game.h" />
+    <ClInclude Include="Graphics.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="main.h" />
     <ClInclude Include="targetver.h" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\RocketServer\CRC32.cpp" />
+    <ClCompile Include="..\RocketServer\GamePacket.cpp" />
+    <ClCompile Include="..\RocketServer\Logger.cpp" />
+    <ClCompile Include="..\RocketServer\Network.cpp" />
+    <ClCompile Include="..\RocketServer\NetworkPacket.cpp" />
+    <ClCompile Include="..\RocketServer\Utils.cpp" />
+    <ClCompile Include="Game.cpp" />
+    <ClCompile Include="Graphics.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Rocket.rc" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\Explosion01.png" />
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\laserRed07.png" />
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\Mark.png" />
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\playerShip3_blue.png" />
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\playerShip3_green.png" />
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\playerShip3_orange.png" />
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\playerShip3_red.png" />
+    <Image Include="..\..\dotnet\Rocket\Content\Ships\Shot.png" />
     <Image Include="Rocket.ico" />
     <Image Include="small.ico" />
   </ItemGroup>
