@@ -31,8 +31,8 @@ class GamePacket :
 private:
 
 public:
-    //std::vector<uint8_t> ToBytes() override;
-    //void ReadFromBytes(const std::vector<uint8_t>& data);
-    void Create(const PlayerState& playerState);
+    void SerializePlayerState(const PlayerState& playerState);
+    std::vector<PlayerState> DeserializePlayerStates();
+    inline PlayerState DeserializePlayerState();
 };
 

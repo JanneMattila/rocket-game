@@ -254,9 +254,11 @@ int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockad
         if (player.ConnectionSalt == connectionSalt &&
             NetworkUtilities::IsSameAddress(player.Address, clientAddr))
         {
-            uint16_t seqNum = networkPacket->ReadInt16();
-            uint16_t ack = networkPacket->ReadInt16();
-            uint32_t ackBits = networkPacket->ReadInt32();
+            GamePacket* gamePacket = static_cast<GamePacket*>(networkPacket.get());
+
+            uint16_t seqNum = gamePacket->ReadInt16();
+            uint16_t ack = gamePacket->ReadInt16();
+            uint32_t ackBits = gamePacket->ReadInt32();
 
             uint16_t diff = NetworkUtilities::SequenceNumberDiff(player.remoteSequenceNumberSmall, seqNum);
             if (diff > 0)
@@ -315,12 +317,19 @@ int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockad
             player.localSequenceNumberLarge++;
             player.localSequenceNumberSmall = player.localSequenceNumberLarge % SEQUENCE_NUMBER_MAX;
 
+            PlayerState playerState = gamePacket->DeserializePlayerState();
+            player.IsFiring = playerState.keyboard.space;
+
             NetworkPacket sendNetworkPacket;
             sendNetworkPacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::GAME_STATE));
             sendNetworkPacket.WriteInt64(player.ConnectionSalt);
             sendNetworkPacket.WriteInt16(player.localSequenceNumberSmall);
             sendNetworkPacket.WriteInt16(player.remoteSequenceNumberSmall);
             sendNetworkPacket.WriteInt32(ackBits);
+
+            // TODO: Serialize player states
+            sendNetworkPacket.WriteInt8(0); // 0 players
+
             m_network->Send(sendNetworkPacket, player.Address);
 
             PacketInfo pi;

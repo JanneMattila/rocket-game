@@ -255,16 +255,17 @@ int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 
 int Client::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket)
 {
-    int64_t connectionSalt = networkPacket->ReadUInt64();
+    GamePacket* gamePacket = static_cast<GamePacket*>(networkPacket.get());
+    int64_t connectionSalt = gamePacket->ReadUInt64();
     if (m_connectionSalt != connectionSalt)
     {
         m_logger->Log(LogLevel::WARNING, "HandleGameState: Incorrect salt", { KV(m_connectionSalt), KV(connectionSalt)});
         return 0;
     }
 
-    uint16_t seqNum = networkPacket->ReadInt16();
-    uint16_t ack = networkPacket->ReadInt16();
-    uint32_t ackBits = networkPacket->ReadInt32();
+    uint16_t seqNum = gamePacket->ReadInt16();
+    uint16_t ack = gamePacket->ReadInt16();
+    uint32_t ackBits = gamePacket->ReadInt32();
 
     uint16_t diff = NetworkUtilities::SequenceNumberDiff(m_remoteSequenceNumberSmall, seqNum);
 
@@ -334,6 +335,8 @@ int Client::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket)
     auto receivedPacketsRemaining = m_receivedPackets.size();
     m_logger->Log(LogLevel::DEBUG, "HandleGameState", { KV(m_remoteSequenceNumberLarge), KV(m_remoteSequenceNumberSmall), KV(sendPacketsRemaining), KV(receivedPacketsRemaining) });
 
+    std::vector<PlayerState> playerStates = gamePacket->DeserializePlayerStates();
+
     return 1;
 }
 
@@ -345,12 +348,29 @@ void Client::SendGameState()
     uint32_t ackBits{};
     NetworkUtilities::ComputeAckBits(m_receivedPackets, m_remoteSequenceNumberSmall, ackBits);
 
-    NetworkPacket sendNetworkPacket;
+    GamePacket sendNetworkPacket;
     sendNetworkPacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::GAME_STATE));
     sendNetworkPacket.WriteInt64(m_connectionSalt);
     sendNetworkPacket.WriteInt16(m_localSequenceNumberSmall);
     sendNetworkPacket.WriteInt16(m_remoteSequenceNumberSmall);
     sendNetworkPacket.WriteInt32(ackBits);
+
+    // Serialize player state
+    PlayerState playerState{};
+    playerState.playerID = 1; // Assuming player ID is 1 for this example
+    playerState.pos.x.floatValue = 100.0f; // Example position
+    playerState.pos.y.floatValue = 200.0f; // Example position
+    playerState.vel.x.floatValue = 1.0f; // Example velocity
+    playerState.vel.y.floatValue = 1.0f; // Example velocity
+    playerState.speed.floatValue = 10.0f; // Example speed
+    playerState.rotation.floatValue = 0.0f; // Example rotation
+    playerState.keyboard.up = true; // Example keyboard state
+    playerState.keyboard.down = false;
+    playerState.keyboard.left = false;
+    playerState.keyboard.right = true;
+    playerState.keyboard.space = false;
+    sendNetworkPacket.SerializePlayerState(playerState);
+
     m_network->Send(sendNetworkPacket, m_serverAddr);
 
     PacketInfo pi;
