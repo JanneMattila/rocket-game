@@ -49,8 +49,10 @@ private:
     ID2D1Bitmap* m_pTileBitmap = nullptr;
 
     // Fixed render size
-    static constexpr UINT RENDER_WIDTH = 1024;
-    static constexpr UINT RENDER_HEIGHT = 768;
+    static constexpr UINT RENDER_WIDTH = 1920;
+    static constexpr UINT RENDER_HEIGHT = 1080;
+
+    double m_refreshRateHz = 60.0;
 
 public:
     Graphics();
@@ -60,7 +62,10 @@ public:
     HRESULT RecreateDeviceResources();
     HRESULT LoadPng(UINT resourceID, ID2D1Bitmap** ppBitmap);
     HRESULT LoadResources();
-    void Render(double deltaTime, double fps);
-    void Present(); // New method for presenting with VSYNC
+    void Render(double fps);
+    void Present(); // Use VSYNC
+
+    double GetRefreshRate() const { return m_refreshRateHz; }
+    double GetDisplayRefreshRateWinAPI();
 };
 

@@ -8,17 +8,24 @@ Game::~Game()
 {
 }
 
-void Game::Initialize()
+HRESULT Game::Initialize(HWND hWnd, HINSTANCE hInstance)
 {
-    // Initialization code here
+    HRESULT hr = m_graphics.InitializeDevice(hWnd, hInstance);
+    if (FAILED(hr)) return hr;
+
+    hr = m_graphics.LoadResources();
+    if (FAILED(hr)) return hr;
+
+    return S_OK;
 }
 
-void Game::Run()
+void Game::Update(double deltaTime, const Keyboard& keyboard)
 {
-    // Main game loop code here
+    // Other update logic here
 }
 
-void Game::Shutdown()
+void Game::Render(double fps)
 {
-    // Cleanup code here
+    m_graphics.Render(fps);
+    m_graphics.Present(); // VSYNC support - this will block until next refresh
 }

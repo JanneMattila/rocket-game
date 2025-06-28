@@ -2,6 +2,10 @@
 #include "framework.h"
 #include "main.h"
 #include "Graphics.h"
+#include "Game.h"
+#include "Keyboard.h"
+#include "Logger.h"
+#include "Client.h"
 
 constexpr auto MAX_LOADSTRING = 100;
 
@@ -12,19 +16,11 @@ WCHAR szTitle[MAX_LOADSTRING];
 WCHAR szWindowClass[MAX_LOADSTRING];            
 bool g_bRunning = true;
 
-// Improved timing variables
-UINT32 g_frameCount = 0;
-std::chrono::high_resolution_clock::time_point g_lastFpsUpdate;
-std::chrono::high_resolution_clock::time_point g_lastFrameTime;
-double g_fps = 0.0;
-
 // Key state variables
-bool g_keyUpPressed = false;
-bool g_keyDownPressed = false;
-bool g_keyLeftPressed = false;
-bool g_keyRightPressed = false;
-
-Graphics g_graphics;
+Keyboard g_keyboard{};
+Game g_game{};
+std::shared_ptr<Logger> g_logger;
+std::unique_ptr<Client> g_client;
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -58,6 +54,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     MSG msg = {};
 
     // Initialize timing
+    UINT32 frameCount = 0;
+    std::chrono::high_resolution_clock::time_point g_lastFpsUpdate;
+    std::chrono::high_resolution_clock::time_point g_lastFrameTime;
+    double fps = 0.0;
+
     auto currentTime = std::chrono::high_resolution_clock::now();
     g_lastFrameTime = currentTime;
     g_lastFpsUpdate = currentTime;
@@ -72,7 +73,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         g_lastFrameTime = newTime;
 
         // Update frame count
-        g_frameCount++;
+        frameCount++;
 
         // Calculate FPS every second
         auto timeSinceLastFpsUpdate = newTime - g_lastFpsUpdate;
@@ -80,20 +81,19 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
         
         if (secondsSinceLastUpdate >= 1.0)
         {
-            g_fps = g_frameCount / secondsSinceLastUpdate;
-            g_frameCount = 0;
+            fps = frameCount / secondsSinceLastUpdate;
+            frameCount = 0;
             g_lastFpsUpdate = newTime;
         }
 
-        // Process messages
         while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
         {
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
 
-        g_graphics.Render(deltaTime, g_fps);
-        g_graphics.Present(); // VSYNC support - this will block until next refresh
+        g_game.Update(deltaTime, g_keyboard);
+        g_game.Render(fps);
     }
 
     return (int) msg.wParam;
@@ -129,10 +129,7 @@ HRESULT InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    if (!hWnd) return E_FAIL;
 
-   HRESULT hr = g_graphics.InitializeDevice(hWnd, hInst);
-   if (FAILED(hr)) return hr;
-
-   hr = g_graphics.LoadResources();
+   HRESULT hr = g_game.Initialize(hWnd, hInstance);
    if (FAILED(hr)) return hr;
 
    ShowWindow(hWnd, nCmdShow);
@@ -150,23 +147,25 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         switch (wParam)
         {
             case VK_ESCAPE:g_bRunning = false; break;
-            case VK_UP:    g_keyUpPressed = true; break;
-            case VK_DOWN:  g_keyDownPressed = true; break;
-            case VK_LEFT:  g_keyLeftPressed = true; break;
-            case VK_RIGHT: g_keyRightPressed = true; break;
+            case VK_SPACE: g_keyboard.space = true; break;
+            case VK_UP:    g_keyboard.up = true; break;
+            case VK_DOWN:  g_keyboard.down = true; break;
+            case VK_LEFT:  g_keyboard.left = true; break;
+            case VK_RIGHT: g_keyboard.right = true; break;
         }
         break;
 
     case WM_KEYUP:
         switch (wParam)
         {
-            case VK_UP:    g_keyUpPressed = false; break;
-            case VK_DOWN:  g_keyDownPressed = false; break;
-            case VK_LEFT:  g_keyLeftPressed = false; break;
-            case VK_RIGHT: g_keyRightPressed = false; break;
+            case VK_SPACE: g_keyboard.space = false; break;
+            case VK_UP:    g_keyboard.up = false; break;
+            case VK_DOWN:  g_keyboard.down = false; break;
+            case VK_LEFT:  g_keyboard.left = false; break;
+            case VK_RIGHT: g_keyboard.right = false; break;
         }
         break;
-    break;
+
     case WM_DESTROY:
         g_bRunning = false; // This will cause the game loop to exit
         PostQuitMessage(0);

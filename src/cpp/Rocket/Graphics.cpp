@@ -1,6 +1,7 @@
 #include <string>
 #include "Graphics.h"
 #include "resource.h" // Include your resource header for resource IDs
+#include <vector>
 
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "dwrite.lib")
@@ -15,10 +16,10 @@ Graphics::Graphics()
 
 Graphics::~Graphics()
 {
-    // Release all Direct2D resources
+    // Clean up all Direct2D and DirectX resources BEFORE uninitializing COM
     CleanupDevice();
-
-    // Uninitialize COM library
+    
+    // Uninitialize COM library last
     CoUninitialize();
 }
 
@@ -39,11 +40,19 @@ HRESULT Graphics::InitializeDevice(HWND hWnd, HINSTANCE hInstance)
         D3D_FEATURE_LEVEL_10_0
     };
 
+    // In debug builds, enable DXGI debug layer
+#ifdef _DEBUG
+    //UINT createDeviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_DEBUG;
+    UINT createDeviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_DEBUG;
+#else
+    UINT createDeviceFlags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+#endif
+
     hr = D3D11CreateDevice(
         nullptr,
         D3D_DRIVER_TYPE_HARDWARE,
         nullptr,
-        D3D11_CREATE_DEVICE_BGRA_SUPPORT, // Required for Direct2D interop
+        createDeviceFlags, // Use the debug flag in debug builds
         featureLevels,
         ARRAYSIZE(featureLevels),
         D3D11_SDK_VERSION,
@@ -68,7 +77,9 @@ HRESULT Graphics::InitializeDevice(HWND hWnd, HINSTANCE hInstance)
     hr = dxgiAdapter->GetParent(IID_PPV_ARGS(&dxgiFactory));
     if (FAILED(hr)) return hr;
 
-    // Create swap chain
+    m_refreshRateHz = GetDisplayRefreshRateWinAPI();
+
+    // Create swap chain with the detected refresh rate
     DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
     swapChainDesc.Width = RENDER_WIDTH;
     swapChainDesc.Height = RENDER_HEIGHT;
@@ -177,23 +188,33 @@ HRESULT Graphics::InitializeDevice(HWND hWnd, HINSTANCE hInstance)
 
 void Graphics::CleanupDevice()
 {
-    // Release all Direct2D resources
+    // Release Direct2D resources first (they depend on D3D)
     SAFE_RELEASE(m_pD2DTargetBitmap);
     SAFE_RELEASE(m_pD2DContext);
     SAFE_RELEASE(m_pD2DDevice);
     SAFE_RELEASE(m_pD2DFactory);
-    SAFE_RELEASE(m_pSwapChain);
-    SAFE_RELEASE(m_pD3DContext);
-    SAFE_RELEASE(m_pD3DDevice);
-    SAFE_RELEASE(m_pIWICFactory);
-    SAFE_RELEASE(m_pTextFormat);
-    SAFE_RELEASE(m_pDWriteFactory);
+    
+    // Release brushes and bitmaps
     SAFE_RELEASE(m_pWhiteBrush);
     SAFE_RELEASE(m_pGrayBrush);
     SAFE_RELEASE(m_pBlueBrush);
     SAFE_RELEASE(m_pShipBitmap);
     SAFE_RELEASE(m_pExplosionBitmap);
     SAFE_RELEASE(m_pTileBitmap);
+    
+    // Release DirectWrite resources
+    SAFE_RELEASE(m_pTextFormat);
+    SAFE_RELEASE(m_pDWriteFactory);
+    
+    // Release WIC factory
+    SAFE_RELEASE(m_pIWICFactory);
+    
+    // Release DXGI swap chain before D3D device
+    SAFE_RELEASE(m_pSwapChain);
+    
+    // Release D3D resources last
+    SAFE_RELEASE(m_pD3DContext);
+    SAFE_RELEASE(m_pD3DDevice);
 }
 
 HRESULT Graphics::LoadPng(UINT resourceID, ID2D1Bitmap** ppBitmap)
@@ -275,7 +296,7 @@ HRESULT Graphics::LoadResources()
     return S_OK;
 }
 
-void Graphics::Render(double deltaTime, double fps)
+void Graphics::Render(double fps)
 {
     if (m_pD2DContext == nullptr) return;
 
@@ -346,4 +367,31 @@ void Graphics::Present()
         // Present with VSYNC (1 = wait for vertical sync, 0 = no wait)
         m_pSwapChain->Present(1, 0);
     }
+}
+
+double Graphics::GetDisplayRefreshRateWinAPI()
+{
+    DEVMODE devMode = {};
+    devMode.dmSize = sizeof(DEVMODE);
+    
+    // Try to get settings for the primary display
+    if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devMode))
+    {
+        if (devMode.dmDisplayFrequency > 0 && devMode.dmDisplayFrequency != 1)
+        {
+            // dmDisplayFrequency of 1 usually means "hardware default"
+            return static_cast<double>(devMode.dmDisplayFrequency);
+        }
+    }
+    
+    // If that fails, try getting the default registry setting
+    if (EnumDisplaySettings(NULL, ENUM_REGISTRY_SETTINGS, &devMode))
+    {
+        if (devMode.dmDisplayFrequency > 0 && devMode.dmDisplayFrequency != 1)
+        {
+            return static_cast<double>(devMode.dmDisplayFrequency);
+        }
+    }
+    
+    return 60.0; // Ultimate fallback
 }
