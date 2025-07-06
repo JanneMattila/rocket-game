@@ -22,10 +22,14 @@ HRESULT Game::Initialize(HWND hWnd, HINSTANCE hInstance)
 void Game::Update(double deltaTime, const Keyboard& keyboard)
 {
     // Other update logic here
+    m_scene.deltaTime = deltaTime;
 }
 
-void Game::Render(double fps)
+void Game::Render(double fps, uint64_t roundTripTimeMs)
 {
-    m_graphics.Render(fps);
+    m_scene.fps = fps;
+    m_scene.roundTripTimeMs = roundTripTimeMs;
+
+    m_graphics.Render(m_scene);
     m_graphics.Present(); // VSYNC support - this will block until next refresh
 }

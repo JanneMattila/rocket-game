@@ -296,7 +296,7 @@ HRESULT Graphics::LoadResources()
     return S_OK;
 }
 
-void Graphics::Render(double fps)
+void Graphics::Render(const Scene& scene)
 {
     if (m_pD2DContext == nullptr) return;
 
@@ -304,7 +304,7 @@ void Graphics::Render(double fps)
     m_pD2DContext->Clear(D2D1::ColorF(D2D1::ColorF::Black));
 
     wchar_t fpsText[256];
-    swprintf_s(fpsText, L"FPS: %.0lf", fps);
+    swprintf_s(fpsText, L"FPS: %.0lf, Latency: %llu ms", scene.fps, scene.roundTripTimeMs);
 
     // Draw the text
     m_pD2DContext->DrawText(

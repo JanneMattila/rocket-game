@@ -30,6 +30,8 @@ private:
     uint64_t m_remoteSequenceNumberLarge = 0;
     uint16_t m_remoteSequenceNumberSmall = 0;
 
+    uint64_t m_roundTripTimeMs = 0;
+
 public:
 	Client(std::shared_ptr<Logger> logger, std::unique_ptr<Network> network);
 	~Client();
@@ -41,6 +43,8 @@ public:
 
 	void SendGameState();
     int HandleGameState(std::unique_ptr<NetworkPacket> networkPacket);
+    NetworkConnectionState GetConnectionState() const { return m_connectionState; }
+    uint64_t GetRoundTripTimeMs() const { return m_roundTripTimeMs; }
 
 	int QuitGame();
 };

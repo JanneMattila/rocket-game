@@ -8,6 +8,7 @@
 #include <windows.h>
 #include <shellscalingapi.h>
 #include <wincodec.h> // For WIC
+#include "Scene.h"
 
 #ifndef SAFE_RELEASE
 #define SAFE_RELEASE(x) { if ((x)) { (x)->Release(); (x) = nullptr; } }
@@ -62,7 +63,7 @@ public:
     HRESULT RecreateDeviceResources();
     HRESULT LoadPng(UINT resourceID, ID2D1Bitmap** ppBitmap);
     HRESULT LoadResources();
-    void Render(double fps);
+    void Render(const Scene& scene);
     void Present(); // Use VSYNC
 
     double GetRefreshRate() const { return m_refreshRateHz; }

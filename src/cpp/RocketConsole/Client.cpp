@@ -316,6 +316,7 @@ int Client::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket)
         roundTripTime /= acknowledgedCount;
         auto roundTripTimeMs = std::chrono::duration_cast<std::chrono::milliseconds>(roundTripTime).count();
         m_logger->Log(LogLevel::INFO, "HandleGameState: Average round trip time in ms", { KV(roundTripTimeMs), KV(acknowledgedCount)});
+        m_roundTripTimeMs = static_cast<uint64_t>(roundTripTimeMs);
     }
     else
     {

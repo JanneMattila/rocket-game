@@ -9,6 +9,7 @@ void GamePacket::SerializePlayerState(const PlayerState& playerState)
     WriteInt32(playerState.vel.y.intValue);
     WriteInt32(playerState.speed.intValue);
     WriteInt32(playerState.rotation.intValue);
+    WriteInt32(playerState.health.intValue);
     WriteInt8(playerState.keyboard.ToByte());
 }
 
@@ -33,6 +34,7 @@ inline PlayerState GamePacket::DeserializePlayerState()
     playerState.vel.y.intValue = ReadInt32();
     playerState.speed.intValue = ReadInt32();
     playerState.rotation.intValue = ReadInt32();
+    playerState.health.intValue = ReadInt32();
     playerState.keyboard.ReadFromByte(ReadInt8());
     return playerState;
 }

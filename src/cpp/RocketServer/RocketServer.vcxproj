@@ -161,6 +161,8 @@
     <ClInclude Include="NetworkPacketType.h" />
     <ClInclude Include="PacketInfo.h" />
     <ClInclude Include="Player.h" />
+    <ClInclude Include="PlayerState.h" />
+    <ClInclude Include="Scene.h" />
     <ClInclude Include="Server.h" />
     <ClInclude Include="Utils.h" />
   </ItemGroup>

@@ -14,7 +14,9 @@ HINSTANCE hInst;
 HWND g_hwnd;                                    
 WCHAR szTitle[MAX_LOADSTRING];                  
 WCHAR szWindowClass[MAX_LOADSTRING];            
-bool g_bRunning = true;
+volatile std::sig_atomic_t g_running = 1;
+
+std::jthread g_networkingThread;
 
 // Key state variables
 Keyboard g_keyboard{};
@@ -28,6 +30,50 @@ HRESULT             InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
 
+static void NetworkLoop(std::stop_token stopToken)
+{
+    while (g_client->EstablishConnection() != 0 && g_running)
+    {
+        if (g_running == 0) break;
+
+        g_logger->Log(LogLevel::WARNING, "Failed to establish connection");
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+    }
+
+    if (g_running)
+    {
+        g_logger->Log(LogLevel::INFO, "Connection established");
+
+        if (g_client->ExecuteGame(g_running) != 0)
+        {
+            g_logger->Log(LogLevel::EXCEPTION, "Game stopped unexpectedly");
+            return;
+        }
+
+        g_client->QuitGame();
+    }
+}
+
+static std::string GetEnvVariable(const char* varName) {
+    std::string result;
+
+#ifdef _WIN32
+    char* buffer = nullptr;
+    size_t size = 0;
+    if (_dupenv_s(&buffer, &size, varName) == 0 && buffer != nullptr) {
+        result = buffer;
+        free(buffer); // Free the allocated memory
+    }
+#else
+    const char* value = std::getenv(varName);
+    if (value != nullptr) {
+        result = value;
+    }
+#endif
+
+    return result;
+}
+
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
                      _In_opt_ HINSTANCE hPrevInstance,
                      _In_ LPWSTR    lpCmdLine,
@@ -35,6 +81,37 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
+
+    g_logger = std::make_shared<Logger>();
+    g_logger->SetLogLevel(LogLevel::DEBUG);
+
+    g_logger->Log(LogLevel::INFO, "Rocket starting");
+
+    std::string server = "127.0.0.1";
+    int udpPort = 3501;
+
+    // Check for environment variables
+    std::string envServer = GetEnvVariable("UDP_SERVER");
+    std::string envPort = GetEnvVariable("UDP_PORT");
+    if (!envPort.empty())
+    {
+        udpPort = std::atoi(envPort.data());
+    }
+    if (!envServer.empty())
+    {
+        server = envServer;
+    }
+
+    g_logger->Log(LogLevel::INFO, "UDP Server", { KVS(server), KV(udpPort) });
+
+    std::unique_ptr<Network> network = std::make_unique<Network>(g_logger);
+    g_client = std::make_unique<Client>(g_logger, std::move(network));
+
+    if (g_client->Initialize(server, udpPort) != 0)
+    {
+        g_logger->Log(LogLevel::WARNING, "Failed to initialize network");
+        return 1;
+    }
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -51,6 +128,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_ROCKET));
 
+    g_networkingThread = std::jthread(NetworkLoop, std::stop_token{});
+
     MSG msg = {};
 
     // Initialize timing
@@ -63,7 +142,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     g_lastFrameTime = currentTime;
     g_lastFpsUpdate = currentTime;
 
-    while (g_bRunning)
+    while (g_running)
     {
         auto newTime = std::chrono::high_resolution_clock::now();
         
@@ -92,8 +171,18 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             DispatchMessage(&msg);
         }
 
-        g_game.Update(deltaTime, g_keyboard);
-        g_game.Render(fps);
+        auto connectionState = g_client->GetConnectionState();
+        auto roundTripTimeMs = g_client->GetRoundTripTimeMs();
+        if (connectionState == NetworkConnectionState::CONNECTED)
+        {
+            g_game.Update(deltaTime, g_keyboard);
+            g_game.Render(fps, roundTripTimeMs);
+        }
+        else
+        {
+            g_game.Render(-fps, roundTripTimeMs);
+
+        }
     }
 
     return (int) msg.wParam;
@@ -146,7 +235,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
     case WM_KEYDOWN:
         switch (wParam)
         {
-            case VK_ESCAPE:g_bRunning = false; break;
+            case VK_ESCAPE:g_running = false; break;
             case VK_SPACE: g_keyboard.space = true; break;
             case VK_UP:    g_keyboard.up = true; break;
             case VK_DOWN:  g_keyboard.down = true; break;
@@ -167,8 +256,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         break;
 
     case WM_DESTROY:
-        g_bRunning = false; // This will cause the game loop to exit
-        PostQuitMessage(0);
+        g_running = false; // This will cause the game loop to exit
+    PostQuitMessage(0);
         break;
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);

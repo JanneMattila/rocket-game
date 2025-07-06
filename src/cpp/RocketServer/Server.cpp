@@ -127,8 +127,8 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 
 	for (Player& player : m_players) {
 		if (NetworkUtilities::IsSameAddress(player.Address, clientAddr)) {
-			m_logger->Log(LogLevel::DEBUG, "Client has already started connection request", { KV(player.PlayerID) });
-			playerID = player.PlayerID;
+			m_logger->Log(LogLevel::DEBUG, "Client has already started connection request", { KV(player.playerID) });
+			playerID = player.playerID;
 			break;
 		}
 	}
@@ -140,7 +140,7 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 		{
 			bool found = true;
 			for (const Player& player : m_players) {
-				if (player.PlayerID == i) {
+				if (player.playerID == i) {
 					found = false;
 					playerID = i;
 					break;
@@ -168,7 +168,7 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 	player.ClientSalt = clientSalt;
 	player.ServerSalt = serverSalt;
 	player.ConnectionSalt = player.ClientSalt ^ player.ServerSalt;
-	player.PlayerID = playerID;
+	player.playerID = playerID;
 	player.Address = clientAddr;
 	player.Created = std::chrono::steady_clock::now();
 	m_players.push_back(player);
@@ -202,12 +202,12 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 
 			if (player.ConnectionSalt == salt)
 			{
-				m_logger->Log(LogLevel::DEBUG, "HandleChallengeRequest: Player connection accepted", { KV(player.PlayerID) });
+				m_logger->Log(LogLevel::DEBUG, "HandleChallengeRequest: Player connection accepted", { KV(player.playerID) });
 
 				player.ConnectionState = NetworkConnectionState::CONNECTED;
 
 				networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CONNECTION_ACCEPTED));
-				networkPacket->WriteInt64(player.PlayerID);
+				networkPacket->WriteInt64(player.playerID);
 
 				if (m_network->Send(*networkPacket, clientAddr) != 0)
 				{
@@ -217,7 +217,7 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 			}
 			else
 			{
-				m_logger->Log(LogLevel::WARNING, "HandleChallengeRequest: Player connection not accepted", { KV(player.PlayerID) });
+				m_logger->Log(LogLevel::WARNING, "HandleChallengeRequest: Player connection not accepted", { KV(player.playerID) });
 
 				// Remove player from m_players
 				auto it = std::find_if(m_players.begin(), m_players.end(),
@@ -318,17 +318,21 @@ int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockad
             player.localSequenceNumberSmall = player.localSequenceNumberLarge % SEQUENCE_NUMBER_MAX;
 
             PlayerState playerState = gamePacket->DeserializePlayerState();
-            player.IsFiring = playerState.keyboard.space;
+            player.keyboard = playerState.keyboard;
 
-            NetworkPacket sendNetworkPacket;
+            GamePacket sendNetworkPacket;
             sendNetworkPacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::GAME_STATE));
             sendNetworkPacket.WriteInt64(player.ConnectionSalt);
             sendNetworkPacket.WriteInt16(player.localSequenceNumberSmall);
             sendNetworkPacket.WriteInt16(player.remoteSequenceNumberSmall);
             sendNetworkPacket.WriteInt32(ackBits);
 
-            // TODO: Serialize player states
-            sendNetworkPacket.WriteInt8(0); // 0 players
+            // Serialize player states
+            sendNetworkPacket.WriteInt8(m_players.size());
+            for (const Player& p : m_players)
+            {
+                sendNetworkPacket.SerializePlayerState(p);
+            }
 
             m_network->Send(sendNetworkPacket, player.Address);
 
@@ -360,7 +364,7 @@ int Server::HandleDisconnect(std::unique_ptr<NetworkPacket> networkPacket, socka
 
     if (it != m_players.end())
     {
-        auto playerID = it->PlayerID;
+        auto playerID = it->playerID;
         m_logger->Log(LogLevel::INFO, "HandleDisconnect: Player disconnected", { KV(playerID) });
 
         m_players.erase(it, m_players.end());
