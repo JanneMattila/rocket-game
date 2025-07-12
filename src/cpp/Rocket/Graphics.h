@@ -1,13 +1,16 @@
 #pragma once
+
+#ifdef _WIN32
 // DirectX Header Files
 #include <d2d1.h>
 #include <d2d1_1.h>
 #include <d3d11.h>
 #include <dxgi1_2.h>
 #include <dwrite.h>
-#include <windows.h>
 #include <shellscalingapi.h>
 #include <wincodec.h> // For WIC
+#endif
+
 #include "Scene.h"
 
 #ifndef SAFE_RELEASE
@@ -16,6 +19,7 @@
 
 class Graphics
 {
+#ifdef _WIN32
 private:
     // Handle to the application instance
     HINSTANCE m_hInstance = nullptr;
@@ -48,6 +52,7 @@ private:
     ID2D1Bitmap* m_pShipBitmap = nullptr;
     ID2D1Bitmap* m_pExplosionBitmap = nullptr;
     ID2D1Bitmap* m_pTileBitmap = nullptr;
+#endif
 
     // Fixed render size
     static constexpr UINT RENDER_WIDTH = 1920;
@@ -59,14 +64,16 @@ public:
     Graphics();
     ~Graphics();
     HRESULT InitializeDevice(HWND hWnd, HINSTANCE hInstance);
-    void CleanupDevice();
-    HRESULT RecreateDeviceResources();
-    HRESULT LoadPng(UINT resourceID, ID2D1Bitmap** ppBitmap);
     HRESULT LoadResources();
     void Render(const Scene& scene);
     void Present(); // Use VSYNC
 
+#ifdef _WIN32
+    void CleanupDevice();
+    HRESULT RecreateDeviceResources();
+    HRESULT LoadPng(UINT resourceID, ID2D1Bitmap** ppBitmap);
+
     double GetRefreshRate() const { return m_refreshRateHz; }
     double GetDisplayRefreshRateWinAPI();
+#endif
 };
-

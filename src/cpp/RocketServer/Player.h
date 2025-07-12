@@ -2,8 +2,8 @@
 #include <cstdint>
 #include <chrono>
 #ifdef _WIN32
-#include <winsock2.h>
-#include <ws2tcpip.h>
+//#include <winsock2.h>
+//#include <ws2tcpip.h>
 #else
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -27,8 +27,10 @@ struct Player : PlayerState
 	int Messages = 0;
 	int64_t Ticks = 0;
 
-    std::vector<PacketInfo> sendPackets;
-    std::vector<uint64_t> receivedPackets;
+    int64_t serverClockOffset = 0;
+
+    std::vector<PacketInfo> sendPackets{};
+    std::vector<uint64_t> receivedPackets{};
 
     uint64_t localSequenceNumberLarge = 0;
     uint16_t localSequenceNumberSmall = 0;

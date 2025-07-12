@@ -4,6 +4,7 @@
 #include <thread>
 #include <csignal>
 #include "Client.h"
+#include "NetworkQueue.h"
 
 static std::string GetEnvVariable(const char* varName) {
 	std::string result;

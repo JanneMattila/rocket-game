@@ -14,6 +14,7 @@
 #endif
 #include "CRC32.h"
 #include "NetworkPacketType.h"
+#include "Keyboard.h"
 
 class NetworkPacket {
 protected:
@@ -38,7 +39,7 @@ public:
     void WriteInt32(int32_t value);
     void WriteInt64(int64_t value);
     void WriteUInt64(uint64_t value);
-    void WriteKeyboard(uint8_t up, uint8_t down, uint8_t left, uint8_t right, uint8_t firing);
+    void WriteKeyboard(const Keyboard& keyboard);
     NetworkPacketType ReadNetworkPacketType();
     int8_t ReadInt8();
     int16_t ReadInt16();

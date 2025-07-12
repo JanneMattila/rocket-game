@@ -100,6 +100,12 @@ int Server::ExecuteGame(volatile std::sig_atomic_t& running)
 				continue;
 			}
 			break;
+        case NetworkPacketType::CLOCK:
+            if (HandleClockSync(std::move(networkPacket), clientAddr) != 0)
+            {
+                continue;
+            }
+            break;
 		case NetworkPacketType::GAME_STATE:
             if (HandleGameState(std::move(networkPacket), clientAddr) != 0)
             {
@@ -163,6 +169,8 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
     uint64_t serverSalt = Utils::GetRandomNumberUInt64();
     m_logger->Log(LogLevel::DEBUG, "HandleConnectionRequest: Received connection request with client salt", { KV(clientSalt) });
 
+    // TODO: Add clock synchronization
+
 	Player player;
 	player.ConnectionState = NetworkConnectionState::CONNECTING;
 	player.ClientSalt = clientSalt;
@@ -171,6 +179,11 @@ int Server::HandleConnectionRequest(std::unique_ptr<NetworkPacket> networkPacket
 	player.playerID = playerID;
 	player.Address = clientAddr;
 	player.Created = std::chrono::steady_clock::now();
+    player.pos.x.floatValue = 200.0f;
+    player.pos.y.floatValue = 200.0f;
+
+
+
 	m_players.push_back(player);
 
 	m_logger->Log(LogLevel::DEBUG, "HandleConnectionRequest: Player challenge", { KV(playerID) });
@@ -205,6 +218,8 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 				m_logger->Log(LogLevel::DEBUG, "HandleChallengeRequest: Player connection accepted", { KV(player.playerID) });
 
 				player.ConnectionState = NetworkConnectionState::CONNECTED;
+
+                // TODO: Add clock synchronization
 
 				networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CONNECTION_ACCEPTED));
 				networkPacket->WriteInt64(player.playerID);
@@ -243,6 +258,36 @@ int Server::HandleChallengeResponse(std::unique_ptr<NetworkPacket> networkPacket
 
 	m_logger->Log(LogLevel::WARNING, "HandleChallengeRequest: Player not found");
 	return 1;
+}
+
+int Server::HandleClockSync(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr)
+{
+    auto now = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+
+    int64_t connectionSalt = networkPacket->ReadUInt64();
+    int64_t clientTime = networkPacket->ReadUInt64();
+    for (Player& player : m_players)
+    {
+        if (player.ConnectionSalt == connectionSalt &&
+            NetworkUtilities::IsSameAddress(player.Address, clientAddr))
+        {
+            player.serverClockOffset = now - clientTime;
+            m_logger->Log(LogLevel::INFO, "HandleClockSync: Clock synchronized", { KV(player.serverClockOffset) });
+
+            // Send clock sync response
+            NetworkPacket responsePacket;
+            responsePacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::CLOCK_RESPONSE));
+            responsePacket.WriteInt64(now);
+            if (m_network->Send(responsePacket, player.Address) != 0)
+            {
+                m_logger->Log(LogLevel::WARNING, "HandleClockSync: Failed to send clock sync response");
+                return 1;
+            }
+            return 0;
+        }
+    }
+    m_logger->Log(LogLevel::WARNING, "HandleClockSync: Player not found");
+    return 1;
 }
 
 int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockaddr_in& clientAddr)
@@ -328,7 +373,7 @@ int Server::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket, sockad
             sendNetworkPacket.WriteInt32(ackBits);
 
             // Serialize player states
-            sendNetworkPacket.WriteInt8(m_players.size());
+            sendNetworkPacket.WriteInt8(static_cast<int8_t>(m_players.size()));
             for (const Player& p : m_players)
             {
                 sendNetworkPacket.SerializePlayerState(p);

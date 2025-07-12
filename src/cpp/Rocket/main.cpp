@@ -16,43 +16,16 @@ WCHAR szTitle[MAX_LOADSTRING];
 WCHAR szWindowClass[MAX_LOADSTRING];            
 volatile std::sig_atomic_t g_running = 1;
 
-std::jthread g_networkingThread;
-
 // Key state variables
 Keyboard g_keyboard{};
-Game g_game{};
 std::shared_ptr<Logger> g_logger;
-std::unique_ptr<Client> g_client;
+//std::unique_ptr<Game> g_game;
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
 HRESULT             InitInstance(HINSTANCE, int);
 LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
 INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
-
-static void NetworkLoop(std::stop_token stopToken)
-{
-    while (g_client->EstablishConnection() != 0 && g_running)
-    {
-        if (g_running == 0) break;
-
-        g_logger->Log(LogLevel::WARNING, "Failed to establish connection");
-        std::this_thread::sleep_for(std::chrono::seconds(3));
-    }
-
-    if (g_running)
-    {
-        g_logger->Log(LogLevel::INFO, "Connection established");
-
-        if (g_client->ExecuteGame(g_running) != 0)
-        {
-            g_logger->Log(LogLevel::EXCEPTION, "Game stopped unexpectedly");
-            return;
-        }
-
-        g_client->QuitGame();
-    }
-}
 
 static std::string GetEnvVariable(const char* varName) {
     std::string result;
@@ -104,14 +77,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     g_logger->Log(LogLevel::INFO, "UDP Server", { KVS(server), KV(udpPort) });
 
-    std::unique_ptr<Network> network = std::make_unique<Network>(g_logger);
-    g_client = std::make_unique<Client>(g_logger, std::move(network));
+    //g_game = std::make_unique<Game>(g_logger, g_running);
 
-    if (g_client->Initialize(server, udpPort) != 0)
-    {
-        g_logger->Log(LogLevel::WARNING, "Failed to initialize network");
-        return 1;
-    }
+    //if (g_game->InitializeNetwork(server, udpPort) != 0)
+    //{
+    //    g_logger->Log(LogLevel::WARNING, "Failed to initialize network");
+    //    return 1;
+    //}
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -128,9 +100,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_ROCKET));
 
-    g_networkingThread = std::jthread(NetworkLoop, std::stop_token{});
-
-    MSG msg = {};
+    MSG msg{};
 
     // Initialize timing
     UINT32 frameCount = 0;
@@ -171,18 +141,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             DispatchMessage(&msg);
         }
 
-        auto connectionState = g_client->GetConnectionState();
-        auto roundTripTimeMs = g_client->GetRoundTripTimeMs();
-        if (connectionState == NetworkConnectionState::CONNECTED)
-        {
-            g_game.Update(deltaTime, g_keyboard);
-            g_game.Render(fps, roundTripTimeMs);
-        }
-        else
-        {
-            g_game.Render(-fps, roundTripTimeMs);
-
-        }
+        //g_game->Update(deltaTime, g_keyboard);
+        //g_game->Render(fps);
     }
 
     return (int) msg.wParam;
@@ -208,7 +168,6 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
     return RegisterClassExW(&wcex);
 }
 
-
 HRESULT InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
    hInst = hInstance; // Store instance handle in our global variable
@@ -218,8 +177,8 @@ HRESULT InitInstance(HINSTANCE hInstance, int nCmdShow)
 
    if (!hWnd) return E_FAIL;
 
-   HRESULT hr = g_game.Initialize(hWnd, hInstance);
-   if (FAILED(hr)) return hr;
+   //HRESULT hr = g_game->InitializeGraphics(hWnd, hInstance);
+   //if (FAILED(hr)) return hr;
 
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);

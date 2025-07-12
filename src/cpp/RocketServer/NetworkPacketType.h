@@ -14,5 +14,8 @@ enum class NetworkPacketType : int8_t {
 	DISCONNECT = 20,
 
 	PAUSE = 30,
-	RESUME = 31
+	RESUME = 31,
+
+    CLOCK = 40,
+    CLOCK_RESPONSE = 41
 };

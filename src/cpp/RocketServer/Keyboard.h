@@ -3,11 +3,11 @@
 
 struct Keyboard
 {
-    bool up;
-    bool down;
-    bool left;
-    bool right;
-    bool space;
+    uint8_t up;
+    uint8_t down;
+    uint8_t left;
+    uint8_t right;
+    uint8_t space;
 
     void ReadFromByte(uint8_t byte)
     {

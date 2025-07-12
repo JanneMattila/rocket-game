@@ -1,11 +1,10 @@
 #pragma once
-#include <cstdint>
-#include <unordered_map>
 #include <csignal>
 #include "Player.h"
 #include "Logger.h"
 #include "Network.h"
 #include "PacketInfo.h"
+#include "NetworkQueue.h"
 
 class Client
 {
@@ -32,12 +31,21 @@ private:
 
     uint64_t m_roundTripTimeMs = 0;
 
+    int64_t m_serverClockOffset = 0; // Offset to synchronize the server clock
+
+    const int MAX_SEND_PACKETS_STORED = 32; // Maximum number of packets to store for sending
+    const int MAX_RECEIVED_PACKETS_STORED = 32; // Maximum number of packets to store for received packets
+
 public:
 	Client(std::shared_ptr<Logger> logger, std::unique_ptr<Network> network);
 	~Client();
 
+    NetworkQueue<PlayerState, 1024> SendQueue;
+    NetworkQueue<std::vector<PlayerState>, 1024> ReceiveQueue;
+
 	int Initialize(std::string server, int port);
 	int EstablishConnection();
+    void SyncClock();
 
 	int ExecuteGame(volatile std::sig_atomic_t& running);
 

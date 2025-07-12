@@ -123,4 +123,15 @@ public:
         inet_ntop(AF_INET, &addr.sin_addr, buf, sizeof(buf));
         return std::string(buf) + ":" + std::to_string(ntohs(addr.sin_port));
     }
+
+    inline static uint8_t PackKeyboard(const Keyboard& keyboard)
+    {
+        // TODO: Pack keyboard state more efficiently
+        return 
+            (keyboard.up << 5) | 
+            (keyboard.down << 4) | 
+            (keyboard.left << 3) |
+            (keyboard.right << 2) | 
+            keyboard.space;
+    }
 };

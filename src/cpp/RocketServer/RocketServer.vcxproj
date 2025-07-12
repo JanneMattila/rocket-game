@@ -149,6 +149,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Keyboard.h" />
+    <ClInclude Include="NetworkQueue.h" />
     <ClInclude Include="NetworkUtilities.h" />
     <ClInclude Include="NetworkBase.h" />
     <ClInclude Include="CRC32.h" />

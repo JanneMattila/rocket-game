@@ -1,5 +1,5 @@
+#ifdef _WIN32
 #include <string>
-#include "Graphics.h"
 #include "resource.h" // Include your resource header for resource IDs
 #include <vector>
 
@@ -9,6 +9,8 @@
 #pragma comment(lib, "d3d11.lib")
 #pragma comment(lib, "dxgi.lib")
 #pragma comment(lib, "windowscodecs.lib")
+#endif
+#include "Graphics.h"
 
 Graphics::Graphics()
 {
@@ -16,15 +18,18 @@ Graphics::Graphics()
 
 Graphics::~Graphics()
 {
+#ifdef _WIN32
     // Clean up all Direct2D and DirectX resources BEFORE uninitializing COM
     CleanupDevice();
     
     // Uninitialize COM library last
     CoUninitialize();
+#endif
 }
 
 HRESULT Graphics::InitializeDevice(HWND hWnd, HINSTANCE hInstance)
 {
+#ifdef _WIN32
     if (!hWnd || !hInstance) return E_POINTER;
 
     m_hInstance = hInstance;
@@ -184,10 +189,14 @@ HRESULT Graphics::InitializeDevice(HWND hWnd, HINSTANCE hInstance)
     SAFE_RELEASE(dxgiFactory);
 
     return hr;
+#else
+    return 0;
+#endif
 }
 
 void Graphics::CleanupDevice()
 {
+#ifdef _WIN32
     // Release Direct2D resources first (they depend on D3D)
     SAFE_RELEASE(m_pD2DTargetBitmap);
     SAFE_RELEASE(m_pD2DContext);
@@ -215,8 +224,104 @@ void Graphics::CleanupDevice()
     // Release D3D resources last
     SAFE_RELEASE(m_pD3DContext);
     SAFE_RELEASE(m_pD3DDevice);
+#endif
 }
 
+void Graphics::Render(const Scene& scene)
+{
+#ifdef _WIN32
+
+    if (m_pD2DContext == nullptr) return;
+
+    m_pD2DContext->BeginDraw();
+    m_pD2DContext->Clear(D2D1::ColorF(D2D1::ColorF::Black));
+
+    wchar_t fpsText[256];
+    swprintf_s(fpsText, L"FPS: %.0lf, Latency: %llu ms", scene.fps, scene.roundTripTimeMs);
+
+    // Draw the text
+    m_pD2DContext->DrawText(
+        fpsText,
+        (int)wcslen(fpsText),
+        m_pTextFormat,
+        D2D1::RectF(10, 10, 400, 50),
+        m_pWhiteBrush);
+
+    std::wstring text = L"TBA";
+
+    m_pD2DContext->DrawText(
+        text.c_str(),
+        (int)text.length(),
+        m_pTextFormat,
+        D2D1::RectF(10, 100, 400, 200),
+        m_pWhiteBrush);
+
+    // Draw the first player's ship if available
+    if (m_pShipBitmap && !scene.players.empty())
+    {
+        const PlayerState& player = scene.players[0];
+        float x = player.pos.x.floatValue;
+        float y = player.pos.y.floatValue;
+        float rotation = player.rotation.floatValue;
+
+        // Get ship bitmap size
+        float shipWidth = static_cast<float>(m_pShipBitmap->GetSize().width);
+        float shipHeight = static_cast<float>(m_pShipBitmap->GetSize().height);
+
+        // Center the ship on (x, y)
+        D2D1_POINT_2F center = D2D1::Point2F(x, y);
+
+        // Save the current transform
+        D2D1_MATRIX_3X2_F oldTransform;
+        m_pD2DContext->GetTransform(&oldTransform);
+
+        // Set transform: translate to position, rotate, then translate back
+        D2D1_MATRIX_3X2_F transform =
+            D2D1::Matrix3x2F::Rotation(rotation * 180.0f / 3.14159265f, center) *
+            D2D1::Matrix3x2F::Translation(0, 0);
+        m_pD2DContext->SetTransform(transform * oldTransform);
+
+        // Draw the ship centered at (x, y)
+        m_pD2DContext->DrawBitmap(
+            m_pShipBitmap,
+            D2D1::RectF(
+                x - shipWidth / 2.0f,
+                y - shipHeight / 2.0f,
+                x + shipWidth / 2.0f,
+                y + shipHeight / 2.0f
+            )
+        );
+
+        // Restore the transform
+        m_pD2DContext->SetTransform(oldTransform);
+    }
+
+    HRESULT hr = m_pD2DContext->EndDraw();
+    if (hr == D2DERR_RECREATE_TARGET)
+    {
+        // Device lost, need to recreate everything
+        RecreateDeviceResources();
+    }
+#endif
+}
+
+HRESULT Graphics::LoadResources()
+{
+#ifdef _WIN32
+    HRESULT hr = S_OK;
+    if (m_pD2DContext == nullptr || m_pIWICFactory == nullptr) return E_FAIL;
+
+    // Load ship bitmap
+    hr = LoadPng(IDB_PNG_SHIP1, &m_pShipBitmap);
+    if (FAILED(hr)) return hr;
+
+    return S_OK;
+#else
+    return 0;
+#endif
+}
+
+#ifdef _WIN32
 HRESULT Graphics::LoadPng(UINT resourceID, ID2D1Bitmap** ppBitmap)
 {
     HRSRC imageResHandle = nullptr;
@@ -284,59 +389,6 @@ HRESULT Graphics::LoadPng(UINT resourceID, ID2D1Bitmap** ppBitmap)
     return hr;
 }
 
-HRESULT Graphics::LoadResources()
-{
-    HRESULT hr = S_OK;
-    if (m_pD2DContext == nullptr || m_pIWICFactory == nullptr) return E_FAIL;
-
-    // Load ship bitmap
-    hr = LoadPng(IDB_PNG_SHIP1, &m_pShipBitmap);
-    if (FAILED(hr)) return hr;
-
-    return S_OK;
-}
-
-void Graphics::Render(const Scene& scene)
-{
-    if (m_pD2DContext == nullptr) return;
-
-    m_pD2DContext->BeginDraw();
-    m_pD2DContext->Clear(D2D1::ColorF(D2D1::ColorF::Black));
-
-    wchar_t fpsText[256];
-    swprintf_s(fpsText, L"FPS: %.0lf, Latency: %llu ms", scene.fps, scene.roundTripTimeMs);
-
-    // Draw the text
-    m_pD2DContext->DrawText(
-        fpsText,
-        (int)wcslen(fpsText),
-        m_pTextFormat,
-        D2D1::RectF(10, 10, 400, 50),
-        m_pWhiteBrush);
-
-    std::wstring text = L"TBA";
-
-    m_pD2DContext->DrawText(
-        text.c_str(),
-        (int)text.length(),
-        m_pTextFormat,
-        D2D1::RectF(10, 100, 400, 200),
-        m_pWhiteBrush);
-
-    // Draw the ship bitmap at a specific position
-    if (m_pShipBitmap)
-    {
-        m_pD2DContext->DrawBitmap(m_pShipBitmap, D2D1::RectF(50, 50, 50 + 75, 50 + 98));
-    }
-
-    HRESULT hr = m_pD2DContext->EndDraw();
-    if (hr == D2DERR_RECREATE_TARGET)
-    {
-        // Device lost, need to recreate everything
-        RecreateDeviceResources();
-    }
-}
-
 // Add this new method to handle device recreation properly
 HRESULT Graphics::RecreateDeviceResources()
 {
@@ -360,20 +412,11 @@ HRESULT Graphics::RecreateDeviceResources()
     return S_OK;
 }
 
-void Graphics::Present()
-{
-    if (m_pSwapChain)
-    {
-        // Present with VSYNC (1 = wait for vertical sync, 0 = no wait)
-        m_pSwapChain->Present(1, 0);
-    }
-}
-
 double Graphics::GetDisplayRefreshRateWinAPI()
 {
     DEVMODE devMode = {};
     devMode.dmSize = sizeof(DEVMODE);
-    
+
     // Try to get settings for the primary display
     if (EnumDisplaySettings(NULL, ENUM_CURRENT_SETTINGS, &devMode))
     {
@@ -383,7 +426,7 @@ double Graphics::GetDisplayRefreshRateWinAPI()
             return static_cast<double>(devMode.dmDisplayFrequency);
         }
     }
-    
+
     // If that fails, try getting the default registry setting
     if (EnumDisplaySettings(NULL, ENUM_REGISTRY_SETTINGS, &devMode))
     {
@@ -392,6 +435,18 @@ double Graphics::GetDisplayRefreshRateWinAPI()
             return static_cast<double>(devMode.dmDisplayFrequency);
         }
     }
-    
+
     return 60.0; // Ultimate fallback
+}
+#endif
+
+void Graphics::Present()
+{
+#ifdef _WIN32
+    if (m_pSwapChain)
+    {
+        // Present with VSYNC (1 = wait for vertical sync, 0 = no wait)
+        m_pSwapChain->Present(1, 0);
+    }
+#endif
 }

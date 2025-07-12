@@ -8,6 +8,7 @@
 #define htonll(x) htobe64(x)
 #endif
 #include "NetworkPacket.h"
+#include "NetworkUtilities.h"
 
 NetworkPacket::NetworkPacket()
 	: m_offset(0)
@@ -66,9 +67,9 @@ void NetworkPacket::WriteUInt64(uint64_t value)
     m_buffer.insert(m_buffer.end(), p, p + sizeof(uint64_t));
 }
 
-void NetworkPacket::WriteKeyboard(uint8_t up, uint8_t down, uint8_t left, uint8_t right, uint8_t firing)
+void NetworkPacket::WriteKeyboard(const Keyboard& keyboard)
 {
-	uint8_t k = (up << 5) | (down << 4) | (left << 3) | (right << 2) | firing;
+	uint8_t k = NetworkUtilities::PackKeyboard(keyboard);
 	m_buffer.push_back(k);
 }
 

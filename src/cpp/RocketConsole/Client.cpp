@@ -1,4 +1,5 @@
 #include <thread>
+#include <numeric>
 #include "Client.h"
 #include "NetworkPacketType.h"
 #include "Utils.h"
@@ -24,6 +25,8 @@ int Client::EstablishConnection()
 
     uint64_t clientSalt = Utils::GetRandomNumberUInt64();
     std::unique_ptr<NetworkPacket> networkPacket = std::make_unique<NetworkPacket>();
+
+    // TODO: Add clock synchronization
 
     m_connectionState = NetworkConnectionState::CONNECTING;
     networkPacket->WriteInt8(static_cast<int8_t>(NetworkPacketType::CONNECTION_REQUEST));
@@ -162,6 +165,101 @@ int Client::EstablishConnection()
     return 0;
 }
 
+void Client::SyncClock()
+{
+    std::vector<int64_t> clockOffsets;
+    if (m_connectionState != NetworkConnectionState::CONNECTED)
+    {
+        m_logger->Log(LogLevel::WARNING, "SyncClock: Not connected to server");
+        return;
+    }
+
+    if (m_connectionSalt == 0)
+    {
+        m_logger->Log(LogLevel::WARNING, "SyncClock: Connection salt is not set");
+        return;
+    }
+
+    for (size_t i = 0; i < 5; i++)
+    {
+        m_serverClockOffset = 0; // Reset the server clock offset
+
+        m_logger->Log(LogLevel::DEBUG, "SyncClock: Sending clock sync request");
+        NetworkPacket networkPacket;
+        networkPacket.WriteInt8(static_cast<int8_t>(NetworkPacketType::CLOCK));
+        networkPacket.WriteInt64(m_connectionSalt);
+
+        // Get current time
+        auto sendNow = std::chrono::steady_clock::now();
+        auto sendNowEpoch = std::chrono::duration_cast<std::chrono::milliseconds>(sendNow.time_since_epoch()).count();
+        networkPacket.WriteInt64(sendNowEpoch);
+
+        if (m_network->Send(networkPacket, m_serverAddr) != 0)
+        {
+            m_connectionState = NetworkConnectionState::DISCONNECTED;
+            m_logger->Log(LogLevel::DEBUG, "SyncClock: Failed to send clock sync packet");
+            return;
+        }
+
+        // Get the current time and give 500ms time for server to respond
+
+        m_logger->Log(LogLevel::DEBUG, "SyncClock: Waiting for clock sync response");
+
+        while (true)
+        {
+            sockaddr_in clientAddr{};
+            int result = 0;
+            std::unique_ptr<NetworkPacket> responsePacket = m_network->Receive(clientAddr, result);
+            if (result != 0)
+            {
+                m_logger->Log(LogLevel::DEBUG, "SyncClock: Failed to receive clock sync response");
+                return;
+            }
+            if (!NetworkUtilities::IsSameAddress(clientAddr, m_serverAddr))
+            {
+                m_logger->Log(LogLevel::WARNING, "SyncClock: Received data from unknown address");
+                return;
+            }
+            if (responsePacket->ReadAndValidateCRC())
+            {
+                m_logger->Log(LogLevel::WARNING, "SyncClock: Packet validation failed");
+                return;
+            }
+            if (responsePacket->ReadNetworkPacketType() != NetworkPacketType::CLOCK_RESPONSE)
+            {
+                m_logger->Log(LogLevel::WARNING, "SyncClock: Invalid packet type");
+                return;
+            }
+
+            auto receiveNow = std::chrono::steady_clock::now();
+            auto receiveNowEpoch = std::chrono::duration_cast<std::chrono::milliseconds>(receiveNow.time_since_epoch()).count();
+
+            // Round trip time calculation
+            auto roundTripTime = receiveNowEpoch - sendNowEpoch;
+            m_logger->Log(LogLevel::DEBUG, "SyncClock: Round trip time", { KV(roundTripTime) });
+
+            // Read server time from the response packet
+            uint64_t serverTimeMs = responsePacket->ReadUInt64();
+            auto serverClockOffset1 = static_cast<int64_t>(serverTimeMs) - sendNowEpoch - roundTripTime / 2;
+            auto serverClockOffset2 = static_cast<int64_t>(serverTimeMs) - receiveNowEpoch - roundTripTime / 2;
+
+            m_serverClockOffset = (serverClockOffset1 + serverClockOffset2) / 2;
+
+            m_logger->Log(LogLevel::INFO, "SyncClock: Clock synchronized", { KV(m_serverClockOffset) });
+            clockOffsets.push_back(m_serverClockOffset);
+            break;
+        }
+    }
+
+    // Calculate average clock offset
+    if (!clockOffsets.empty())
+    {
+        int64_t totalOffset = std::accumulate(clockOffsets.begin(), clockOffsets.end(), int64_t{ 0 });
+        m_serverClockOffset = totalOffset / static_cast<int64_t>(clockOffsets.size());
+        m_logger->Log(LogLevel::INFO, "SyncClock: Average clock offset calculated", { KV(m_serverClockOffset) });
+    }
+}
+
 int Client::ExecuteGame(volatile std::sig_atomic_t& running)
 {
 	// Main loop
@@ -294,21 +392,52 @@ int Client::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket)
     NetworkUtilities::VerifyAck(m_sendPackets, localSequenceNumberLarge, ackBits);
 
     // Clear all acknowledged packets away from send packets
+    const size_t packetsToKeep = MAX_SEND_PACKETS_STORED; // Keep the last 32 packets
     int acknowledgedCount = 0;
+    size_t packetsToRemove = m_sendPackets.size() - packetsToKeep;
+    int packetLoss = 0;
     std::chrono::steady_clock::duration roundTripTime{};
     m_sendPackets.erase(
         std::remove_if(
             m_sendPackets.begin(),
             m_sendPackets.end(),
-            [this, &acknowledgedCount, &roundTripTime](const PacketInfo& pi) {
-                // Remove if acknowledged
-                acknowledgedCount++;
-                roundTripTime += pi.roundTripTime;
-                return pi.acknowledged;
+            [this, &acknowledgedCount, &roundTripTime, &packetsToRemove, &packetLoss](const PacketInfo& pi) {
+
+                if (packetsToRemove > 0)
+                {
+                    packetsToRemove--;
+                    if (pi.acknowledged)
+                    {
+                        acknowledgedCount++;
+                        roundTripTime += pi.roundTripTime;
+                    }
+                    else
+                    {
+                        packetLoss++;
+                    }
+                    return true; // Remove this packet
+                }
+                else
+                {
+                    // Keep last packetsToKeep packets
+                    return false;
+                }
             }
         ),
         m_sendPackets.end()
     );
+
+    // TODO: Remove old packets from send packets.
+    // Keep only the last 32 packets and if there are older unacknowledged packets, remove them
+    // but calculate packet loss statistics.
+
+    if (m_sendPackets.size() > 32)
+    {
+        size_t packetLoss = m_sendPackets.size() - 32;
+        m_logger->Log(LogLevel::WARNING, "HandleGameState: Packet loss", { KV(packetLoss) });
+        m_sendPackets.erase(m_sendPackets.begin(), m_sendPackets.end() - 32);
+    }
+
 
     // Average round trip time
     if (acknowledgedCount > 0)
@@ -323,12 +452,12 @@ int Client::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket)
         m_logger->Log(LogLevel::DEBUG, "HandleGameState: No packets acknowledged");
     }
 
-    // Keep only 60 received packets
-    if (m_receivedPackets.size() > 60)
+    // Keep only 32 received packets
+    if (m_receivedPackets.size() > MAX_RECEIVED_PACKETS_STORED)
     {
         m_receivedPackets.erase(
             m_receivedPackets.begin(),
-            m_receivedPackets.begin() + (m_receivedPackets.size() - 60)
+            m_receivedPackets.begin() + (m_receivedPackets.size() - MAX_RECEIVED_PACKETS_STORED)
         );
     }
 
@@ -337,12 +466,20 @@ int Client::HandleGameState(std::unique_ptr<NetworkPacket> networkPacket)
     m_logger->Log(LogLevel::DEBUG, "HandleGameState", { KV(m_remoteSequenceNumberLarge), KV(m_remoteSequenceNumberSmall), KV(sendPacketsRemaining), KV(receivedPacketsRemaining) });
 
     std::vector<PlayerState> playerStates = gamePacket->DeserializePlayerStates();
+    ReceiveQueue.push(playerStates);
 
     return 1;
 }
 
 void Client::SendGameState()
 {
+    std::optional<PlayerState> playerState = SendQueue.pop();
+    if (!playerState.has_value())
+    {
+        m_logger->Log(LogLevel::DEBUG, "SendGameState: No player state to send");
+        return;
+    }
+
     m_localSequenceNumberLarge++;
     m_localSequenceNumberSmall = m_localSequenceNumberLarge % SEQUENCE_NUMBER_MAX;
 
@@ -357,26 +494,40 @@ void Client::SendGameState()
     sendNetworkPacket.WriteInt32(ackBits);
 
     // Serialize player state
-    PlayerState playerState{};
-    playerState.playerID = 1; // Assuming player ID is 1 for this example
-    playerState.pos.x.floatValue = 100.0f; // Example position
-    playerState.pos.y.floatValue = 200.0f; // Example position
-    playerState.vel.x.floatValue = 1.0f; // Example velocity
-    playerState.vel.y.floatValue = 1.0f; // Example velocity
-    playerState.speed.floatValue = 10.0f; // Example speed
-    playerState.rotation.floatValue = 0.0f; // Example rotation
-    playerState.keyboard.up = true; // Example keyboard state
-    playerState.keyboard.down = false;
-    playerState.keyboard.left = false;
-    playerState.keyboard.right = true;
-    playerState.keyboard.space = false;
-    sendNetworkPacket.SerializePlayerState(playerState);
+    sendNetworkPacket.SerializePlayerState(playerState.value());
+
+    // Add all previous keyboard states
+    size_t sendPacketsSize = m_sendPackets.size();
+    size_t limitedSendPacketsSize = sendPacketsSize;
+    if (limitedSendPacketsSize > MAX_SEND_PACKETS_STORED)
+    {
+        m_logger->Log(LogLevel::EXCEPTION, "SendGameState: Too many packets to send", { KV(limitedSendPacketsSize) });
+        assert(limitedSendPacketsSize <= MAX_SEND_PACKETS_STORED);
+        limitedSendPacketsSize = MAX_SEND_PACKETS_STORED;
+    }
+
+    std::vector<uint8_t> keyboardStates;
+    for (size_t i = 0; i < limitedSendPacketsSize; ++i)
+    {
+        const PacketInfo& sendPacket = m_sendPackets[sendPacketsSize - limitedSendPacketsSize + i];
+        // Only send until acknowledged packets
+        if (sendPacket.acknowledged) break;
+
+        keyboardStates.push_back(NetworkUtilities::PackKeyboard(sendPacket.keyboard));
+    }
+
+    sendNetworkPacket.WriteInt8(static_cast<int8_t>(keyboardStates.size()));
+    for (const auto& k : keyboardStates)
+    {
+        sendNetworkPacket.WriteInt8(k);
+    }
 
     m_network->Send(sendNetworkPacket, m_serverAddr);
 
     PacketInfo pi;
     pi.seqNum = m_localSequenceNumberLarge;
     pi.sendTicks = std::chrono::steady_clock::now();
+    pi.keyboard = playerState->keyboard;
     m_sendPackets.push_back(pi);
 
     m_logger->Log(LogLevel::DEBUG, "SendGameState", { KV(m_localSequenceNumberLarge), KV(m_localSequenceNumberSmall) });
