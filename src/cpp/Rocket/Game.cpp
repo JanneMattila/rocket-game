@@ -27,11 +27,11 @@ int Game::InitializeNetwork(std::string server, int port)
     }
 
     m_networkingThread = std::jthread(&Game::NetworkLoop, this, m_stopToken);
-
+    
     return S_OK;
 }
 
- void Game::NetworkLoop(std::stop_token stopToken)
+void Game::NetworkLoop(std::stop_token stopToken)
 {
     while (m_client->EstablishConnection() != 0 && !stopToken.stop_requested())
     {
@@ -39,6 +39,14 @@ int Game::InitializeNetwork(std::string server, int port)
 
         m_logger->Log(LogLevel::WARNING, "Failed to establish connection");
         std::this_thread::sleep_for(std::chrono::seconds(3));
+    }
+
+    while (m_client->SyncClock() != 0 && !stopToken.stop_requested())
+    {
+        if (stopToken.stop_requested()) break;
+
+        m_logger->Log(LogLevel::WARNING, "Failed to sync clock");
+        std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
     if (!stopToken.stop_requested())
@@ -55,14 +63,14 @@ int Game::InitializeNetwork(std::string server, int port)
     }
 }
 
- 
 #ifdef _WIN32
 HRESULT Game::InitializeGraphics(HWND hWnd, HINSTANCE hInstance)
 {
-    HRESULT hr = m_graphics.InitializeDevice(hWnd, hInstance);
+    m_graphics = std::make_unique<Graphics>(m_logger);
+    HRESULT hr = m_graphics->InitializeDevice(hWnd, hInstance);
     if (FAILED(hr)) return hr;
 
-    hr = m_graphics.LoadResources();
+    hr = m_graphics->LoadResources();
     if (FAILED(hr)) return hr;
 
     return S_OK;
@@ -82,102 +90,33 @@ void Game::Update(double deltaTime, const Keyboard& keyboard)
     
     m_scene.deltaTime = deltaTime;
     m_scene.roundTripTimeMs = roundTripTimeMs;
-    /*
-    std::optional<std::vector<PlayerState>> playerStates = m_client->ReceiveQueue.pop();
-
-    if (playerStates.has_value())
+    
+    // Send input to network thread
+    PlayerState playerState;
+    playerState.deltaTime = deltaTime;
+    playerState.keyboard = keyboard;
+    m_client->OutgoingState.push(playerState);
+    
+    // Get current game state for rendering
+    while (true)
     {
-        m_scene.players = playerStates.value();
-        //for (const PlayerState& player : playerStates.value())
-        //{
+        auto currentState = m_client->IncomingStates.pop();
+        if (!currentState.has_value())
+        {
+            break; // No more states to process
+        }
 
-        //}
+        m_scene.players = currentState.value();
     }
-
-    if (!m_scene.players.empty())
-    {
-        PlayerState& player = m_scene.players[0];
-
-        // Convert deltaTime to float for calculations
-        float dt = static_cast<float>(deltaTime);
-
-        // Rocket movement parameters
-        float& rotation = player.rotation.floatValue;
-        float& speed = player.speed.floatValue;
-        float& posX = player.pos.x.floatValue;
-        float& posY = player.pos.y.floatValue;
-        float& velX = player.vel.x.floatValue;
-        float& velY = player.vel.y.floatValue;
-
-        // Set default speed if not set
-        if (speed == 0.0f) speed = 4000.0f;
-
-        // Handle rotation
-        if (keyboard.left)
-        {
-            rotation -= 2.0f * dt;
-        }
-        if (keyboard.right)
-        {
-            rotation += 2.0f * dt;
-        }
-
-        // Handle acceleration
-        if (keyboard.up)
-        {
-            velX += std::cos(rotation) * speed * dt;
-            velY += std::sin(rotation) * speed * dt;
-        }
-
-        // Air resistance
-        velX *= 1.0f - (0.5f * dt);
-        velY *= 1.0f - (0.5f * dt);
-
-        // Gravity
-        velY += 50.0f * dt;
-
-        // Update position
-        posX += velX * dt;
-        posY += velY * dt;
-
-        // Clamp to screen bounds (assuming you have access to screen width/height)
-        const float rocketWidth = 64.0f;  // Replace with actual sprite width if available
-        const float rocketHeight = 64.0f; // Replace with actual sprite height if available
-        const float screenWidth = 1280.0f; // Replace with your actual screen width
-        const float screenHeight = 720.0f; // Replace with your actual screen height
-
-        if (posX < rocketWidth / 2)
-        {
-            posX = rocketWidth / 2;
-            velX = 0;
-        }
-        if (posX > screenWidth - rocketWidth / 2)
-        {
-            posX = screenWidth - rocketWidth / 2;
-            velX = 0;
-        }
-        if (posY < rocketHeight / 2)
-        {
-            posY = rocketHeight / 2;
-            velY = 0;
-        }
-        if (posY > screenHeight - rocketHeight / 2)
-        {
-            posY = screenHeight - rocketHeight / 2;
-            velY = 0;
-        }
-
-        // Send game state to the server
-        //m_client->SendQueue.push(player);
-    }
-    */
 }
 
 void Game::Render(double fps)
 {
     m_scene.fps = fps;
-    m_scene.roundTripTimeMs = m_scene.roundTripTimeMs;
 
-    m_graphics.Render(m_scene);
-    m_graphics.Present(); // VSYNC support - this will block until next refresh
+    if (m_graphics)
+    {
+        m_graphics->Render(m_scene);
+        m_graphics->Present();
+    }
 }

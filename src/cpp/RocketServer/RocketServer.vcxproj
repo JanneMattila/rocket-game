@@ -142,12 +142,15 @@
     <ClCompile Include="GamePacket.cpp" />
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="NetworkPacket.cpp" />
+    <ClCompile Include="PhysicsEngine.cpp" />
     <ClCompile Include="Server.cpp" />
     <ClCompile Include="Network.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Utils.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="FloatInt.h" />
+    <ClInclude Include="GameStateSnapshot.h" />
     <ClInclude Include="Keyboard.h" />
     <ClInclude Include="NetworkQueue.h" />
     <ClInclude Include="NetworkUtilities.h" />
@@ -161,6 +164,7 @@
     <ClInclude Include="NetworkPacket.h" />
     <ClInclude Include="NetworkPacketType.h" />
     <ClInclude Include="PacketInfo.h" />
+    <ClInclude Include="PhysicsEngine.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="PlayerState.h" />
     <ClInclude Include="Scene.h" />

@@ -45,6 +45,9 @@
     <ClCompile Include="..\RocketServer\Network.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\RocketServer\PhysicsEngine.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Client.h">

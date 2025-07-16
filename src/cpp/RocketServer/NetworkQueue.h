@@ -17,6 +17,7 @@ public:
         size_t next_head = increment(head);
         if (next_head == m_tail.load(std::memory_order_acquire))
         {
+            _ASSERT(true && "NetworkQueue is full, cannot push item");
             return false; // queue full
         }
         m_buffer[head] = item;

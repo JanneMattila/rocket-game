@@ -159,6 +159,7 @@
     <ClCompile Include="..\RocketServer\Logger.cpp" />
     <ClCompile Include="..\RocketServer\Network.cpp" />
     <ClCompile Include="..\RocketServer\NetworkPacket.cpp" />
+    <ClCompile Include="..\RocketServer\PhysicsEngine.cpp" />
     <ClCompile Include="..\RocketServer\Utils.cpp" />
     <ClCompile Include="Game.cpp" />
     <ClCompile Include="Graphics.cpp" />

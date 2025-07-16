@@ -12,7 +12,8 @@
 #endif
 #include "Graphics.h"
 
-Graphics::Graphics()
+Graphics::Graphics(std::shared_ptr<Logger> logger)
+    : m_logger(logger)
 {
 }
 

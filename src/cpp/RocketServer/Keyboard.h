@@ -28,4 +28,13 @@ struct Keyboard
         if (space) byte |= 0x10;
         return byte;
     }
+
+    bool operator==(const Keyboard& other) const
+    {
+        return up == other.up && 
+               down == other.down &&
+               left == other.left && 
+               right == other.right &&
+               space == other.space;
+    }
 };

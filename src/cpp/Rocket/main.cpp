@@ -19,7 +19,7 @@ volatile std::sig_atomic_t g_running = 1;
 // Key state variables
 Keyboard g_keyboard{};
 std::shared_ptr<Logger> g_logger;
-//std::unique_ptr<Game> g_game;
+std::unique_ptr<Game> g_game;
 
 // Forward declarations of functions included in this code module:
 ATOM                MyRegisterClass(HINSTANCE hInstance);
@@ -77,13 +77,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
     g_logger->Log(LogLevel::INFO, "UDP Server", { KVS(server), KV(udpPort) });
 
-    //g_game = std::make_unique<Game>(g_logger, g_running);
+    g_game = std::make_unique<Game>(g_logger, g_running);
 
-    //if (g_game->InitializeNetwork(server, udpPort) != 0)
-    //{
-    //    g_logger->Log(LogLevel::WARNING, "Failed to initialize network");
-    //    return 1;
-    //}
+    if (g_game->InitializeNetwork(server, udpPort) != 0)
+    {
+        g_logger->Log(LogLevel::WARNING, "Failed to initialize network");
+        return 1;
+    }
 
     // Initialize global strings
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
@@ -141,8 +141,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
             DispatchMessage(&msg);
         }
 
-        //g_game->Update(deltaTime, g_keyboard);
-        //g_game->Render(fps);
+        g_game->Update(deltaTime, g_keyboard);
+        g_game->Render(fps);
     }
 
     return (int) msg.wParam;

@@ -68,6 +68,9 @@
     <ClCompile Include="..\RocketConsole\Client.cpp">
       <Filter>Shared</Filter>
     </ClCompile>
+    <ClCompile Include="..\RocketServer\PhysicsEngine.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Rocket.rc">

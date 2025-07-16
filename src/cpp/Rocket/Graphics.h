@@ -12,6 +12,7 @@
 #endif
 
 #include "Scene.h"
+#include "Logger.h"
 
 #ifndef SAFE_RELEASE
 #define SAFE_RELEASE(x) { if ((x)) { (x)->Release(); (x) = nullptr; } }
@@ -21,6 +22,8 @@ class Graphics
 {
 #ifdef _WIN32
 private:
+    std::shared_ptr<Logger> m_logger;
+
     // Handle to the application instance
     HINSTANCE m_hInstance = nullptr;
 
@@ -61,7 +64,7 @@ private:
     double m_refreshRateHz = 60.0;
 
 public:
-    Graphics();
+    Graphics(std::shared_ptr<Logger> logger);
     ~Graphics();
     HRESULT InitializeDevice(HWND hWnd, HINSTANCE hInstance);
     HRESULT LoadResources();

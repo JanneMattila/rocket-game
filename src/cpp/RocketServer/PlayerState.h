@@ -1,13 +1,7 @@
 #pragma once
 #include <cstdint>
 #include "Keyboard.h"
-
-// https://new.gafferongames.com/post/serialization_strategies/
-union FloatInt
-{
-    float floatValue{};
-    uint32_t intValue;
-};
+#include "FloatInt.h"
 
 struct Vector
 {
@@ -24,4 +18,5 @@ struct PlayerState
     FloatInt rotation{};
     FloatInt health{};
     Keyboard keyboard{};
+    double deltaTime{};
 };

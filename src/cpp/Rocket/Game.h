@@ -1,4 +1,5 @@
 #pragma once
+#include <memory>
 #include "Graphics.h"
 #include "Keyboard.h"
 #include "Scene.h"
@@ -12,9 +13,9 @@ private:
     std::jthread m_networkingThread{};
     std::stop_token m_stopToken{};
 
-    Graphics m_graphics;
-    Scene m_scene;
+    std::unique_ptr<Graphics> m_graphics;
     std::unique_ptr<Client> m_client;
+    Scene m_scene;
 
 public:
     Game(std::shared_ptr<Logger> logger, volatile std::sig_atomic_t& running);

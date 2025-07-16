@@ -97,6 +97,14 @@ int main(int argc, char** argv)
 		std::this_thread::sleep_for(std::chrono::seconds(3));
 	}
 
+    while (g_client->SyncClock() != 0)
+    {
+        if (g_running == 0) break;
+
+        g_logger->Log(LogLevel::WARNING, "Failed to sync clock");
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+
 	if (g_running)
 	{
 		g_logger->Log(LogLevel::INFO, "Connection established");
