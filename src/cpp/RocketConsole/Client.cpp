@@ -171,6 +171,7 @@ int Client::EstablishConnection()
 int Client::SyncClock()
 {
     std::vector<int64_t> clockOffsets;
+    std::vector<int64_t> roundTripTimes;
     if (m_connectionState != NetworkConnectionState::CONNECTED)
     {
         m_logger->Log(LogLevel::WARNING, "SyncClock: Not connected to server");
@@ -244,6 +245,8 @@ int Client::SyncClock()
 
             // Round trip time calculation
             auto roundTripTime = receiveNowEpoch - sendNowEpoch;
+            roundTripTimes.push_back(roundTripTime);
+
             m_logger->Log(LogLevel::DEBUG, "SyncClock: Round trip time", { KV(roundTripTime) });
 
             // Read server time from the response packet
@@ -262,9 +265,10 @@ int Client::SyncClock()
     // Calculate average clock offset
     if (!clockOffsets.empty())
     {
-        int64_t totalOffset = std::accumulate(clockOffsets.begin(), clockOffsets.end(), int64_t{ 0 });
-        m_serverClockOffset = totalOffset / static_cast<int64_t>(clockOffsets.size());
-        m_logger->Log(LogLevel::INFO, "SyncClock: Average clock offset calculated", { KV(m_serverClockOffset) });
+        m_serverClockOffset = std::accumulate(clockOffsets.begin(), clockOffsets.end(), int64_t{ 0 }) / static_cast<int64_t>(clockOffsets.size());
+        m_roundTripTimeMs = std::accumulate(roundTripTimes.begin(), roundTripTimes.end(), int64_t{ 0 }) / static_cast<int64_t>(roundTripTimes.size());
+
+        m_logger->Log(LogLevel::DEBUG, "SyncClock: Average round trip time and clock offset", { KV(m_serverClockOffset), KV(m_roundTripTimeMs) });
         return 0;
     }
 
